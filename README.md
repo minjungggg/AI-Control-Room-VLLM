@@ -15,6 +15,74 @@
 
 - 환경 : 맥북 네이티브 (VMWare X)
 
+### 2.1.0 ZSH SHELL 설치와 설정
+
+- `zsh` 설치
+    
+  ```bash
+  brew install zsh
+  ```
+
+  - 설치 확인
+  
+    ```bash
+    which zsh
+    ```
+
+    `/opt/homebrew/bin/zsh` 가 나오면 정상 설치
+
+- `zsh` 기본 쉘로 변경
+    
+  ```bash
+  chsh -s /opt/homebrew/bin/zsh
+  ```
+
+  - 터미널은 재시작하면 변경된 zsh 쉘로 실행됨
+
+- `zsh` 테마를 `agnoster`로 변경
+  
+  - `oh-my-zsh` 설치
+    
+    ```bash
+    sh -c "$(curl -fsSL https://raw.github.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
+    ```
+
+  - `~/.zshrc` 파일을 nano 메모장으로 열기
+    
+    ```bash
+    nano ~/.zshrc
+    ```
+      
+  - `ZSH_THEME="agnoster"` 로 변경 후 저장하고 종료
+  - 터미널을 재시작하면 변경된 테마가 적용됨
+  
+  - Powerline폰트 설치 및 적용
+
+    ```bash
+    brew install romkatv/powerlevel10k/powerlevel10k
+    # 아래 명령어를 입력하면 이것저것 폰트가 잘 보이는지, 디자인은 어떻게 할건지 물어봄 질문에 따라 선택
+    source /opt/homebrew/opt/powerlevel10k/share/powerlevel10k/powerlevel10k.zsh-theme
+    ```
+
+- 유용한 플러그인 설치
+  - `zsh-syntax-highlighting, zsh-autosuggestions` 설치
+    
+    ```bash
+    git clone https://github.com/zsh-users/zsh-syntax-highlighting.git ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/zsh-syntax-highlighting
+    git clone https://github.com/zsh-users/zsh-autosuggestions ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/zsh-autosuggestions
+    ```
+      
+  - `~/.zshrc` 파일을 nano 메모장으로 열기
+    
+    ```bash
+    nano ~/.zshrc
+    ```
+      
+  - 내용 중 `plugins=(...)` 부분에 `zsh-syntax-highlighting, zsh-autosuggestions` 추가 후 저장하고 종료
+    ```bash
+    plugins=(direnv git colored-man-pages colorize pip python brew macos jsontools history sudo zsh-autosuggestions zsh-syntax-highlighting)
+    ```
+
 ### 2.1.1 ROS-Gazebo 설치
 > 참고자료 : https://github.com/IOES-Lab/ROS_GZ_MacOS_Native_AppleSilicon/tree/macos_patch
 - ROS는 소스코드로부터 직접 컴파일, Gazebo는 brew 패키지 매니저로 컴파일된 binary 설치
@@ -65,6 +133,9 @@
     git clone https://github.com/rudislabs/actuator_msgs.git
     git clone https://github.com/ros-perception/vision_msgs.git
     cd $HOME/ros_gz_ws
+
+    # GPSD 설치
+    brew install gpsd
     ```
       
   - Set environment variables
@@ -108,7 +179,7 @@
     ```bash
     echo "" >> $HOME/ros2_jazzy/activate_ros
     echo "# Activate ros_gz" >> $HOME/ros2_jazzy/activate_ros
-    echo "source $HOME/ros_gz_ws/install/setup.bash" >> $HOME/ros2_jazzy/activate_ros
+    echo "source $HOME/ros_gz_ws/install/setup.zsh" >> $HOME/ros2_jazzy/activate_ros
     ```
 
 - 원상복귀!
@@ -185,7 +256,7 @@
     ```bash
     echo "" >> $HOME/ros2_jazzy/activate_ros
     echo "# ---- Activate AI-Control-Room-VLLM ----- " >> $HOME/ros2_jazzy/activate_ros
-    echo "source $HOME/vllm_control_ws/install/setup.bash" >> $HOME/ros2_jazzy/activate_ros
+    echo "source $HOME/vllm_control_ws/install/setup.zsh" >> $HOME/ros2_jazzy/activate_ros
     ```
 
   - 모델, 플러그인 파일들 위치 환경변수 설정
