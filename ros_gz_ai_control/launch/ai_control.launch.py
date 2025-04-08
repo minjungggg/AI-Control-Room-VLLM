@@ -4,6 +4,8 @@ from launch.substitutions import LaunchConfiguration, PathJoinSubstitution, Text
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch_ros.substitutions import FindPackageShare
 
+from ament_index_python.packages import get_package_share_directory
+from launch_ros.actions import Node
 
 def launch_setup(context, *args, **kwargs):
     world_name = LaunchConfiguration("world")
@@ -96,6 +98,17 @@ def launch_setup(context, *args, **kwargs):
 
 
 def generate_launch_description():
+
+    pkg_project_description = get_package_share_directory('gz-waves-models')
+    pkg_project_bringup = get_package_share_directory('ros_gz_ai_control')
+    pkg_project_models = get_package_share_directory('gz-waves_models')
+    pkg_project_worlds = get_package_share_directory('gz-waves_models')
+
+    # Load the SDF file from "description" package
+    sdf_file  =  os.path.join(pkg_project_description, 'models', 'wamv_camera', 'model.sdf')
+    with open(sdf_file, 'r') as infp:
+        robot_desc = infp.read()
+
     # Kill any existing gzserver instances
     kill_gazebo = ExecuteProcess(
         cmd=["bash", "-c", "ps -ef | grep 'gz sim' | grep -v grep | awk '{print $2}' | xargs kill -9"],
@@ -103,6 +116,36 @@ def generate_launch_description():
         output="screen",
     )
 
+    # Takes the description and joint angles as inputs and publishes the 3D poses of the robot links
+    robot_state_publisher = Node(
+        package='robot_state_publisher',
+        executable='robot_state_publisher',
+        name='robot_state_publisher',
+        output='both',
+        parameters=[
+            {'use_sim_time': True},
+            {'robot_description': robot_desc},
+        ]
+    )
+
+    # For publishing and controlling the robot pose, we need joint states of the robot
+    # Configure the robot model by adjusting the joint angles using the GUI slider
+    joint_state_publisher = Node(
+        package='joint_state_publisher',
+        executable='joint_state_publisher',
+        name='joint_state_publisher',
+        arguments=[sdf_file],
+        output=['screen']
+    )
+    
+    # Visualize in RViz
+    rviz = Node(
+       package='rviz2',
+       executable='rviz2',
+       condition=IfCondition(LaunchConfiguration('rviz'))
+    )
+
+    
     # Declare the launch arguments with default values
     args = [
         DeclareLaunchArgument(
