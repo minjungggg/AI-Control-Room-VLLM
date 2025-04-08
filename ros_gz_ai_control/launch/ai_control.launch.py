@@ -4,8 +4,9 @@ from launch.substitutions import LaunchConfiguration, PathJoinSubstitution, Text
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch_ros.substitutions import FindPackageShare
 
-from ament_index_python.packages import get_package_share_directory
+from launch.conditions import IfCondition
 from launch_ros.actions import Node
+import os
 
 def launch_setup(context, *args, **kwargs):
     world_name = LaunchConfiguration("world")
@@ -97,15 +98,13 @@ def launch_setup(context, *args, **kwargs):
     return include
 
 
+
+
 def generate_launch_description():
 
-    pkg_project_description = get_package_share_directory('gz-waves-models')
-    pkg_project_bringup = get_package_share_directory('ros_gz_ai_control')
-    pkg_project_models = get_package_share_directory('gz-waves_models')
-    pkg_project_worlds = get_package_share_directory('gz-waves_models')
-
     # Load the SDF file from "description" package
-    sdf_file  =  os.path.join(pkg_project_description, 'models', 'wamv_camera', 'model.sdf')
+    base_path = '/Users/taey/vllm_control_ws/src/AI-Control-Room-VLLM/gz-waves-models'
+    sdf_file = os.path.join(base_path, 'models', 'wamv_camera', 'model.sdf')
     with open(sdf_file, 'r') as infp:
         robot_desc = infp.read()
 
@@ -221,4 +220,11 @@ def generate_launch_description():
     ]
 
     return LaunchDescription(
-        [kill_gazebo] + args + [OpaqueFunction(function=launch_setup)])
+        [kill_gazebo] + args + [OpaqueFunction(function=launch_setup)] + 
+        [
+        DeclareLaunchArgument('rviz', default_value='true',
+                              description='Open RViz.'),
+        joint_state_publisher,
+        robot_state_publisher,
+        rviz            
+    ])
