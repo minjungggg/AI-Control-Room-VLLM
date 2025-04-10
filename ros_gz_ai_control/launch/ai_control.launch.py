@@ -4,9 +4,6 @@ from launch.substitutions import LaunchConfiguration, PathJoinSubstitution, Text
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch_ros.substitutions import FindPackageShare
 
-from launch.conditions import IfCondition
-from launch_ros.actions import Node
-import os
 
 def launch_setup(context, *args, **kwargs):
     world_name = LaunchConfiguration("world")
@@ -98,16 +95,7 @@ def launch_setup(context, *args, **kwargs):
     return include
 
 
-
-
 def generate_launch_description():
-
-    # Load the SDF file from "description" package
-    base_path = '/Users/taey/vllm_control_ws/src/AI-Control-Room-VLLM/gz-waves-models'
-    sdf_file = os.path.join(base_path, 'models', 'wamv_camera', 'model.sdf')
-    with open(sdf_file, 'r') as infp:
-        robot_desc = infp.read()
-
     # Kill any existing gzserver instances
     kill_gazebo = ExecuteProcess(
         cmd=["bash", "-c", "ps -ef | grep 'gz sim' | grep -v grep | awk '{print $2}' | xargs kill -9"],
@@ -115,36 +103,6 @@ def generate_launch_description():
         output="screen",
     )
 
-    # Takes the description and joint angles as inputs and publishes the 3D poses of the robot links
-    robot_state_publisher = Node(
-        package='robot_state_publisher',
-        executable='robot_state_publisher',
-        name='robot_state_publisher',
-        output='both',
-        parameters=[
-            {'use_sim_time': True},
-            {'robot_description': robot_desc},
-        ]
-    )
-
-    # For publishing and controlling the robot pose, we need joint states of the robot
-    # Configure the robot model by adjusting the joint angles using the GUI slider
-    joint_state_publisher = Node(
-        package='joint_state_publisher',
-        executable='joint_state_publisher',
-        name='joint_state_publisher',
-        arguments=[sdf_file],
-        output=['screen']
-    )
-    
-    # Visualize in RViz
-    rviz = Node(
-       package='rviz2',
-       executable='rviz2',
-       condition=IfCondition(LaunchConfiguration('rviz'))
-    )
-
-    
     # Declare the launch arguments with default values
     args = [
         DeclareLaunchArgument(
@@ -220,11 +178,4 @@ def generate_launch_description():
     ]
 
     return LaunchDescription(
-        [kill_gazebo] + args + [OpaqueFunction(function=launch_setup)] + 
-        [
-        DeclareLaunchArgument('rviz', default_value='true',
-                              description='Open RViz.'),
-        joint_state_publisher,
-        robot_state_publisher,
-        rviz            
-    ])
+        [kill_gazebo] + args + [OpaqueFunction(function=launch_setup)])
