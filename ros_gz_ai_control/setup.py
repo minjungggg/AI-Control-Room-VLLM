@@ -28,6 +28,7 @@ setup(
         "console_scripts": [
             "tf_broadcaster = ros_gz_ai_control.tf_broadcaster:main",
             'image_sub = ros_gz_ai_control.get_image.image_sub:main',
+            'image_saver = ros_gz_ai_control.get_image.image_saver:main',
             'thrust_control = ros_gz_ai_control.thrust_control.thrust_control:main',
         ],
     },
