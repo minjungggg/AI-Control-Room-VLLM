@@ -27,6 +27,8 @@ setup(
     entry_points={
         "console_scripts": [
             "tf_broadcaster = ros_gz_ai_control.tf_broadcaster:main",
+            'image_subscriber = ros_gz_ai_control.get_image.image_sub:main',
+            'thrust_control = ros_gz_ai_control.thrust_control.thrust_control:main',
         ],
     },
 )
