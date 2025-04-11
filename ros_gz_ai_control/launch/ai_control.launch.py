@@ -177,5 +177,5 @@ def generate_launch_description():
         ),
     ]
 
-    return LaunchDescription(
+    return LaunchDescription(    
         [kill_gazebo] + args + [OpaqueFunction(function=launch_setup)])
