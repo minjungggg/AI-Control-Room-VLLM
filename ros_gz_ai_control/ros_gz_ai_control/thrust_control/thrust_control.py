@@ -5,6 +5,7 @@ import sys
 import termios
 import tty
 import threading
+from rcl_interfaces.msg import SetParametersResult
 
 class KeyboardThrustController(Node):
     def __init__(self):
@@ -17,15 +18,39 @@ class KeyboardThrustController(Node):
         self.running = True
         self.reset_timer = None
 
-        # thrust 값 및 재설정 딜레이 (초) – 필요에 따라 조정 가능
-        self.forward_thrust = 20.0
-        self.reverse_thrust = -20.0
-        self.turn_thrust = 15.0
-        self.reset_delay = 3.0
+        # 파라미터 선언 및 기본값 설정
+        self.declare_parameter('forward_thrust', 20.0)
+        self.declare_parameter('reverse_thrust', -20.0)
+        self.declare_parameter('turn_thrust', 15.0)
+        self.declare_parameter('reset_delay', 3.0)
+
+        self.forward_thrust = self.get_parameter('forward_thrust').get_parameter_value().double_value
+        self.reverse_thrust = self.get_parameter('reverse_thrust').get_parameter_value().double_value
+        self.turn_thrust = self.get_parameter('turn_thrust').get_parameter_value().double_value
+        self.reset_delay = self.get_parameter('reset_delay').get_parameter_value().double_value
+
+        # 파라미터 변경 콜백 등록
+        self.add_on_set_parameters_callback(self.parameter_callback)
 
         # 키보드 입력을 위한 별도 데몬 스레드 시작
         self.keyboard_thread = threading.Thread(target=self.keyboard_loop, daemon=True)
         self.keyboard_thread.start()
+
+    def parameter_callback(self, params):
+        for param in params:
+            if param.name == 'forward_thrust':
+                self.forward_thrust = param.value
+                self.get_logger().info(f'Updated forward_thrust to {self.forward_thrust}')
+            elif param.name == 'reverse_thrust':
+                self.reverse_thrust = param.value
+                self.get_logger().info(f'Updated reverse_thrust to {self.reverse_thrust}')
+            elif param.name == 'turn_thrust':
+                self.turn_thrust = param.value
+                self.get_logger().info(f'Updated turn_thrust to {self.turn_thrust}')
+            elif param.name == 'reset_delay':
+                self.reset_delay = param.value
+                self.get_logger().info(f'Updated reset_delay to {self.reset_delay}')
+        return SetParametersResult(successful=True)
 
     def get_key(self):
         tty.setraw(sys.stdin.fileno())
