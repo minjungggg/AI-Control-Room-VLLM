@@ -3,6 +3,7 @@ from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, Opaq
 from launch.substitutions import LaunchConfiguration, PathJoinSubstitution, TextSubstitution
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch_ros.substitutions import FindPackageShare
+from launch_ros.actions import Node
 
 
 def launch_setup(context, *args, **kwargs):
@@ -102,7 +103,11 @@ def generate_launch_description():
         shell=False,
         output="screen",
     )
-
+    image_saver = Node(
+        package="ros_gz_ai_control",
+        executable="image_saver",
+        name="image_saver_node",
+    )
     # Declare the launch arguments with default values
     args = [
         DeclareLaunchArgument(
@@ -178,4 +183,4 @@ def generate_launch_description():
     ]
 
     return LaunchDescription(    
-        [kill_gazebo] + args + [OpaqueFunction(function=launch_setup)])
+        [kill_gazebo] + args + [image_saver, OpaqueFunction(function=launch_setup)])
