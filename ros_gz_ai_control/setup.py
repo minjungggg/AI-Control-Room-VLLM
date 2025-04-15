@@ -30,7 +30,7 @@ setup(
             'image_sub = ros_gz_ai_control.get_image.image_sub:main',
             'image_saver = ros_gz_ai_control.get_image.image_saver:main',
             'thrust_control = ros_gz_ai_control.thrust_control.thrust_control:main',
-            'gpt_image_describer = ros_gz_ai_control.thrust_control.gpt_talker:main',
+            'gpt_commander = ros_gz_ai_control.thrust_control.gpt_commander:main',
         ],
     },
 )
