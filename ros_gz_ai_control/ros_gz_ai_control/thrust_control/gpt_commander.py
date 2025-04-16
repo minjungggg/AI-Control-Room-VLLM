@@ -21,6 +21,8 @@ class GPTImageRobotController(Node):
 
         self.thrust_is_busy = False
         self.processing = False
+        self.description = None
+
         self.timer = self.create_timer(5.0, self.timer_callback)
 
         self.get_logger().info("GPT Image Robot Controller Node Started")
@@ -56,21 +58,23 @@ class GPTImageRobotController(Node):
                 image_bytes = img_file.read()
                 image_data = self._to_base64(image_bytes)
 
-            response = openai.chat.completions.create(
+            describe_response = openai.chat.completions.create(
                 model="gpt-4o",
                 messages=[
                     {
                         "role": "system",
                         "content": (
-                            "너는 로봇 제어 시스템을 위한 판단 역할을 맡고 있다. "
-                            "이미지를 분석한 후 반드시 'stop', 'move' 중 하나의 명령어만을 응답해야 한다. "
-                            "다른 어떠한 부가 설명 없이 오직 이 단어만을 반환해라."
+                            "너는 항해중인 수중드론 제어 시스템을 위한 판단 역할을 맡고 있다."
+                            "수중 드론은 쌍동선 형태이며, 이미지 하단에 보이는 두 개의 검은 돌출부는 드론 양쪽의 추진기로, 이 간격이 드론의 실제 가로 길이를 나타냅니다. 세로 길이는 이보다 약 2배 정도 길게 설계되어 있습니다. "
+                            "현재 이미지를 촬영하고 있는 카메라의 시야각은 120도 이며, 드론 전면 부에서 약 0.85m 뒤에 위치에 있고, 이는 드론의 1/3 정도에 해당합니다."
+                            "이미지를 바탕으로 주변 환경을 설명하라. 부표의 위치, 장애물, 항해 가능성 등에 대해 명확하고 자세하게 설명할 것."
+                            "이미지 중앙 아래에 회색 물체는 드론의 추진기 앞부분이므로 장애물이 아님을 유의하라."
                         )
                     },
                     {
                         "role": "user",
                         "content": [
-                            {"type": "text", "text": "이미지를 분석해서 로봇 제어에 필요한 결정( stop, move )을 내려줘. 먼저 검정과 빨간 부표 사이를 지나가서 뒤에있는 노란 부표앞으로 가고싶어. 이미지에 부표가 없다면 stop 해줘."},
+                            {"type": "text", "text": "이미지를 분석하고 주변 환경을 설명해줘."},
                             {
                                 "type": "image_url",
                                 "image_url": {
@@ -80,15 +84,46 @@ class GPTImageRobotController(Node):
                         ]
                     }
                 ],
-                max_tokens=10,
-                temperature=0.2,
+                max_tokens=300,
+                temperature=0.5,
                 top_p=0.5,
                 stream=False
             )
 
-            decision = response.choices[0].message.content.strip().lower()
-            self.get_logger().info(f"GPT 결정: {decision}")
+            self.description = describe_response.choices[0].message.content.strip()
+            self.get_logger().info(f"GPT 설명: {self.description}")
 
+            # GPT의 결정에 따라 행동 결정
+            decision_response = openai.chat.completions.create(
+                model = "gpt-4o",
+                messages=[
+                    {
+                        "role": "system",
+                        "content": (
+                            "너는 수중 드론의 항해를 제어하는 판단 시스템이다. 이전 설명을 기반으로 드론의 항해 방향을 판단해야 한다. "
+                            "'stop' 또는 'move' 둘 중 하나만 응답하라. 설명 없이 단어 하나만 출력할 것."
+                        )
+                    },
+                    {
+                        "role": "assistant",
+                        "content": self.description
+                    },
+                    {
+                        "role": "user",
+                        "content": "이 설명을 바탕으로 앞에 보이는 장애물을 지나 장애물 뒤로 가고싶어. 장애물 사이를 지나가도 좋고 장애물을 크게 피해가도 좋아."
+                    }
+                ],
+                max_tokens=10,
+                top_p=0.2,
+                temperature=0.2,
+                stream=False
+            )
+            decision = decision_response.choices[0].message.content.strip().lower()
+            self.get_logger().info(f"GPT 결정: {decision}")
+            if decision not in ["stop", "move"]:
+                self.get_logger().warn(f"예상치 못한 결정: {decision}. 'stop' 또는 'move' 중 하나로 응답해야 함.")
+                return
+            # 결정에 따라 행동 수행
             self.process_decision(decision)
 
         except Exception as e:
@@ -149,17 +184,23 @@ class GPTImageRobotController(Node):
                 {
                     "role": "system",
                     "content": (
-                        "너는 이동 로봇의 제어를 담당하고 있다. "
-                        "이미지와 함께 명령이 주어지면, 로봇이 장애물에 부딪히지 않고 향해야 할 방향을 판단해야 한다. "
+                        "너는 항해중인 이동 선박의 제어를 담당하고 있다. "
+                        "수중 드론은 쌍동선 형태이며, 이미지 하단에 보이는 두 개의 검은 돌출부는 드론 양쪽의 추진기로, 이 간격이 드론의 실제 가로 길이를 나타냅니다. 세로 길이는 이보다 약 2배 정도 길게 설계되어 있습니다. 현재 이미지를 촬영하고 있는 카메라는 드론 전면에서 약 0.85m 앞으로 돌출된 위치에 있으며, 수면으로부터 약 1.2m 위에 설치되어 있습니다."
+                        "이미지와 함께 명령이 주어지면, 로봇이 장애물에 부딪히지 않고 향해야 할 방향을 판단해야 한다."
+                        "먼저 검정과 빨간 부표 사이를 통과할 것."
                         "반드시 'w', 'a', 's', 'd' 중 하나만 응답해야 한다. "
                         "'w'는 전진, 'a'는 좌회전, 's'는 후진, 'd'는 우회전을 의미한다. "
                         "다른 설명 없이 오직 이 문자 하나만 응답해라."
                     )
                 },
                 {
+                    "role": "assistant",
+                    "content": self.description
+                },
+                {
                     "role": "user",
                     "content": [
-                        {"type": "text", "text": "이동 방향을 w/a/s/d 중 하나로 판단해줘."},
+                        {"type": "text", "text": "이동 방향을 w/a/s/d 중 하나로 판단해줘. 이미지에 부표가 없다면 a/d 로 회전해서 부표를 찾아야 해"},
                         {
                             "type": "image_url",
                             "image_url": {
@@ -169,9 +210,9 @@ class GPTImageRobotController(Node):
                     ]
                 }
             ],
-            max_tokens=10,
+            max_tokens=20,
             temperature=0.3,
-            top_p=0.5,
+            top_p=0.3,
             stream=False
         )
 
