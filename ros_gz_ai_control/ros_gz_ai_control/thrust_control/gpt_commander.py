@@ -39,7 +39,7 @@ class GPTImageRobotController(Node):
             return
 
         self.processing = True
-        threading.Thread(target=self.analyze_image, daemon=True).start()
+        threading.Thread(target=self.analyze_and_act, daemon=True).start()
 
     def analyze_and_act(self):
         try:
