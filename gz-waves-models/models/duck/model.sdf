@@ -25,13 +25,13 @@
       </collision>
       <inertial>
         <pose>0 0 0 0 0 0</pose>
-        <mass>400</mass>
+        <mass>600</mass>
         <inertia>
-          <ixx>266</ixx>
+          <ixx>399</ixx>
           <ixy>0</ixy>
-          <iyy>266</iyy>
+          <iyy>399</iyy>
           <iyz>0</iyz>
-          <izz>266</izz>
+          <izz>399</izz>
         </inertia>
       </inertial>
     </link>

@@ -77,6 +77,7 @@ class GPTImageRobotController(Node):
             with open(latest_image_path, "rb") as img_file:
                 image_bytes = img_file.read()
                 image_data = self._to_base64(image_bytes)
+                self.get_logger().info(f"***************[FILE] {os.path.basename(latest_image_path)}***************")
 
             # 1단계: GPT에게 이미지 설명 요청
             describe_response = openai.chat.completions.create(
@@ -124,8 +125,8 @@ class GPTImageRobotController(Node):
                     {
                         "role": "user",
                         "content": (
-                            "I want to find a yellow duck and move drone's left engine to position it in front of the duck."
-                            "If you haven't found the duck, print out the 'move' command to move, and find the duck as you move."
+                            "I want to find a yellow duck and move drone's left engine to position it in front of the yellow duck."
+                            "If you haven't found the yellow duck, print out the 'move' command to move, and find the yellow duck as you move."
                         )
                     }
                 ],
@@ -168,8 +169,9 @@ class GPTImageRobotController(Node):
                     {
                         "role": "user",
                         "content": (
-                            "I want to find a yellow duck and move drone's left engine to position it in front of the duck."
+                            "I want to find a yellow duck and move drone's left engine to position it in front of the yellow duck."
                             "If there is no 'duck' in the description, let's move to avoid obstacles based on the description so we can find the duck."
+                            "If there is no risk of hitting an obstacle, or there is no in the description, it is recommended that you order 'a' or 'd' to determine the rotation."
                         )
                     }
                 ],

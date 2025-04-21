@@ -20,7 +20,7 @@ class ImageSaver(Node):
         self.image_index = 0  # 저장될 이미지 번호
 
         # 파라미터 선언 (기본값: 48) - 약 8초
-        self.declare_parameter('save_interval', 48)
+        self.declare_parameter('save_interval', 96)
         self.save_interval = self.get_parameter('save_interval').get_parameter_value().integer_value
 
         # 이미지 저장 경로 설정
