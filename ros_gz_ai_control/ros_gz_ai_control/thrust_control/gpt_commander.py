@@ -13,7 +13,6 @@ class GPTImageRobotController(Node):
         super().__init__('gpt_image_robot_controller')
 
         openai.api_key = os.getenv("GPT_API_KEY")
-        self.image_path = os.path.expanduser('~/saved_images/latest_image.png')
 
         self.move_pub = self.create_publisher(String, 'move_robot', 10)
         self.direction_pub = self.create_publisher(String, 'move_direction', 10)
@@ -75,7 +74,7 @@ class GPTImageRobotController(Node):
                 self.get_logger().warn("LATEST_IMAGE FILE DOES NOT EXIST")
                 return
 
-            with open(self.image_path, "rb") as img_file:
+            with open(latest_image_path, "rb") as img_file:
                 image_bytes = img_file.read()
                 image_data = self._to_base64(image_bytes)
 
