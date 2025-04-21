@@ -1,4 +1,5 @@
 import os
+import re
 import base64
 import threading
 import time
@@ -28,6 +29,28 @@ class GPTImageRobotController(Node):
     def thrust_busy_callback(self, msg: Bool):
         self.thrust_is_busy = msg.data
 
+    def get_latest_image_path(self):
+        image_dir = os.path.expanduser('~/saved_images')
+        pattern = re.compile(r'bgra8_saved_image_(\d+)\.png')
+
+        try:
+            files = os.listdir(image_dir)
+            numbered_files = []
+            for f in files:
+                match = pattern.fullmatch(f)
+                if match:
+                    index = int(match.group(1))
+                    numbered_files.append((index, f))
+
+            if not numbered_files:
+                return None
+
+            latest_file = max(numbered_files, key=lambda x: x[0])[1]
+            return os.path.join(image_dir, latest_file)
+        except Exception as e:
+            self.get_logger().error(f"WE CAN'T FIND LATEST IMAGE: {e}")
+            return None
+
     def timer_callback(self):
         if self.processing:
             self.get_logger().debug("Currently processing, ignore new analysis requests")
@@ -47,8 +70,9 @@ class GPTImageRobotController(Node):
                 self.get_logger().info("STOP ANALYSIS BECAUSE THE ROBOT IS BUSY.")
                 return
 
-            if not os.path.exists(self.image_path):
-                self.get_logger().warn(f"IMAGE FILE DOES NOT EXIST: {self.image_path}")
+            latest_image_path = self.get_latest_image_path()
+            if not latest_image_path or not os.path.exists(latest_image_path):
+                self.get_logger().warn("LATEST_IMAGE FILE DOES NOT EXIST")
                 return
 
             with open(self.image_path, "rb") as img_file:
