@@ -30,12 +30,12 @@ class GPTImageRobotController(Node):
 
     def timer_callback(self):
         if self.processing:
-            self.get_logger().debug("현재 처리 중, 새로운 분석 요청 무시")
+            self.get_logger().debug("Currently processing, ignore new analysis requests")
             return
 
         # 🔒 thrust_is_busy 방어
         if self.thrust_is_busy:
-            self.get_logger().info("로봇이 busy 상태이므로 analyze_image 실행 안함.")
+            self.get_logger().info("THE ROBOT IS IN BUSY STATE, SO DO NOT RUN ANALYZE_IMAGE.")
             return
 
         self.processing = True
@@ -44,11 +44,11 @@ class GPTImageRobotController(Node):
     def analyze_and_act(self):
         try:
             if self.thrust_is_busy:
-                self.get_logger().info("로봇이 busy 상태이므로 분석 중단.")
+                self.get_logger().info("STOP ANALYSIS BECAUSE THE ROBOT IS BUSY.")
                 return
 
             if not os.path.exists(self.image_path):
-                self.get_logger().warn(f"이미지 파일이 존재하지 않음: {self.image_path}")
+                self.get_logger().warn(f"IMAGE FILE DOES NOT EXIST: {self.image_path}")
                 return
 
             with open(self.image_path, "rb") as img_file:
@@ -62,17 +62,18 @@ class GPTImageRobotController(Node):
                     {
                         "role": "system",
                         "content": (
-                            "너는 항해중인 수중드론 제어 시스템을 위한 판단 역할을 맡고 있다. "
-                            "수중 드론은 쌍동선 형태이며, 이미지 하단의 검은 돌출부는 드론 양쪽의 추진기로, 이 간격이 드론의 실제 가로 길이다. "
-                            "세로 길이는 이보다 약 2배 정도이며, 카메라는 전면 기준 0.85m 뒤, 드론 길이의 약 1/3 지점에 위치한다. "
-                            "이미지 중앙 하단에 있는 회색 물체는 드론의 앞부분으로 장애물이 아니다. "
-                            "이미지를 분석해 부표의 위치, 장애물 유무, 항해 가능성 등을 명확하고 간단히 설명하라."
+                            "You are acting as a judge for the water drone control system on the voyage."
+                            "Water drones are twin-shaped, and the black protrusions at the bottom of the image are engines on both sides of the drone, and this interval is the actual horizontal length of the drone. "
+                            "The vertical length is about twice this length, and the camera is located 0.85m behind the front, this location is about one-third the vertical length of the drone. "
+                            "Recognize the drone's size based on the above description. Once again, the gray object at the bottom of the center of the image is the engine part of the drone. It is not an obstacle."
+                            "Analyze the image to determine the location of the buoy, the presence of obstacles, and then explain the direction of navigation by considering the size of the drone."
+                            "It would be nice to listen to the explanation and be detailed enough for you to draw a similar picture."
                         )
                     },
                     {
                         "role": "user",
                         "content": [
-                            {"type": "text", "text": "이미지를 분석하고 주변 상황을 설명해줘."},
+                            {"type": "text", "text": "Please analyze the image and explain the surrounding situation."},
                             {"type": "image_url", "image_url": {"url": "data:image/png;base64," + image_data}}
                         ]
                     }
@@ -83,7 +84,7 @@ class GPTImageRobotController(Node):
             )
 
             description = describe_response.choices[0].message.content.strip()
-            self.get_logger().info(f"[설명 결과] {description}")
+            self.get_logger().info(f"[DESCRIPTION] {description}")
 
             # 2단계: GPT에게 stop 또는 move 판단 요청
             decision_response = openai.chat.completions.create(
@@ -92,16 +93,16 @@ class GPTImageRobotController(Node):
                     {
                         "role": "system",
                         "content": (
-                            "너는 수중 드론의 항해 판단 시스템이다. 설명을 기반으로 'stop' 또는 'move' 중 하나만 응답하라. "
-                            "설명 없이 반드시 단어 하나만 출력하라."
+                            "You are the navigation judgment system of a sailing drone. Based on the description, respond only to either 'stop' or 'move'. "
+                            "Be sure to print out only one word without explanation."
                         )
                     },
                     {"role": "assistant", "content": description},
                     {
                         "role": "user",
                         "content": (
-                            "앞에 있는 장애물 뒤로 가고 싶어. 앞에 보이는 장애물을 지나 장애물 뒤로 가고싶어. 장애물 사이를 지나가도 좋고 장애물을 크게 피해가도 좋아."
-                            "정지할 필요가 있다면 'stop', 통과 가능하면 'move' 중 하나만 말해."
+                            "I want to find a yellow duck and move drone's left engine to position it in front of the duck."
+                            "If you haven't found the duck, print out the 'move' command to move, and find the duck as you move."
                         )
                     }
                 ],
@@ -111,20 +112,20 @@ class GPTImageRobotController(Node):
             )
 
             decision = decision_response.choices[0].message.content.strip().lower()
-            self.get_logger().info(f"[판단 결과] {decision}")
+            self.get_logger().info(f"[DECISION] {decision}")
 
             if decision not in ["stop", "move"]:
-                self.get_logger().warn(f"예상치 못한 판단: {decision}")
+                self.get_logger().warn(f"UNEXPECTED DECISION: {decision}")
                 return
 
             if decision == "stop":
-                self.get_logger().info("명령 'stop' 실행")
+                self.get_logger().info("COMMAND 'stop' ")
                 self.stop_pub.publish(String(data="stop"))
                 rclpy.shutdown()
                 return
 
             # 3단계: move인 경우 방향 판단
-            self.get_logger().info("명령 'move' 실행")
+            self.get_logger().info("COMMAND 'move' ")
             self.move_pub.publish(String(data="move"))
 
             direction_response = openai.chat.completions.create(
@@ -133,17 +134,20 @@ class GPTImageRobotController(Node):
                     {
                         "role": "system",
                         "content": (
-                            "너는 수중 드론의 방향을 판단하는 시스템이다. 반드시 'w', 'a', 's', 'd' 중 하나로만 응답하라. "
-                            "'w'=전진, 'a'=좌회전, 's'=후진, 'd'=우회전. 설명 없이 한 글자만 출력할 것."
+                            "You are the system for determining the direction of a sailing drone. Be sure to respond with only one of 'w', 'a', 's', and 'd'."
+                            "Water drones are twin-shaped, and the black protrusions at the bottom of the image are engines on both sides of the drone, and this interval is the actual horizontal length of the drone. "
+                            "The vertical length is about twice this length, and the camera is located 0.85m behind the front, this location is about one-third the vertical length of the drone. "
+                            "Recognize the drone's size based on the above description. Once again, the gray object at the bottom of the center of the image is the engine part of the drone. It is not an obstacle."
+                            "'w' = Front, 'a' = left turn, 's' = backward, 'd' = right turn. Print only one letter without explanation."
                         )
                     },
                     {"role": "assistant", "content": description},
                     {
                         "role": "user",
-                        "content": [
-                            {"type": "text", "text": "장애물을 피하거나 통과할 수 있도록 w/a/s/d 중 하나로 판단해줘."}
-                            # {"type": "image_url", "image_url": {"url": "data:image/png;base64," + image_data}}
-                        ]
+                        "content": (
+                            "I want to find a yellow duck and move drone's left engine to position it in front of the duck."
+                            "If there is no 'duck' in the description, let's move to avoid obstacles based on the description so we can find the duck."
+                        )
                     }
                 ],
                 max_tokens=10,
@@ -154,12 +158,12 @@ class GPTImageRobotController(Node):
             direction = direction_response.choices[0].message.content.strip().lower()
             if direction in ['w', 'a', 's', 'd']:
                 self.direction_pub.publish(String(data=direction))
-                self.get_logger().info(f"[방향 결정] '{direction}' 퍼블리시 완료")
+                self.get_logger().info(f"[DIRECTION] '{direction}' TOPIC PUB")
             else:
-                self.get_logger().warn(f"예상치 못한 방향 응답: {direction}")
+                self.get_logger().warn(f"UNEXPECTED DIRECTION: {direction}")
 
         except Exception as e:
-            self.get_logger().error(f"[GPT 처리 중 오류] {str(e)}")
+            self.get_logger().error(f"[ERROR] {str(e)}")
 
         finally:
             self.processing = False
@@ -174,7 +178,7 @@ def main(args=None):
     try:
         rclpy.spin(node)
     except KeyboardInterrupt:
-        node.get_logger().info("KeyboardInterrupt 수신, 종료합니다.")
+        node.get_logger().info("KeyboardInterrupt >>> SHUTDOWN.")
     finally:
         node.destroy_node()
         rclpy.shutdown()

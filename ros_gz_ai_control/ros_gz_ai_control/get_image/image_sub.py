@@ -19,7 +19,7 @@ class ImageViewer(Node):
     def listener_callback(self, msg):
         try:
             # sensor_msgs/Image 메시지를 OpenCV 이미지로 변환 (rgb8 인코딩)
-            cv_image = self.bridge.imgmsg_to_cv2(msg, desired_encoding='bgr8')
+            cv_image = self.bridge.imgmsg_to_cv2(msg, desired_encoding='bgra8')
             # OpenCV 창으로 이미지 출력
             cv2.imshow("Camera Image", cv_image)
             cv2.waitKey(1)
