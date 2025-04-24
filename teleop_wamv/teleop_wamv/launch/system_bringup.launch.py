@@ -26,5 +26,11 @@ def generate_launch_description():
             executable='gpt_bridge',
             name='gpt_bridge_node',
             output='screen'
-        )
+        ),
+        Node(
+            package='teleop_wamv',
+            executable='wamv_actuator',
+            name='wamv_actuator_node',
+            output='screen'
+        ),
     ])

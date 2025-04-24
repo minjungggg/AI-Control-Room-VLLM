@@ -26,7 +26,7 @@ class GPTBridge(Node):
                         "content": (
                             "당신은 자율 수상 드론(WAM-V)을 제어하는 AI입니다."
                             "사용자로부터 이미지 설명을 입력받고, 이에 따라 드론이 진행해야 할 명령을 생성합니다."
-                            "명령은 반드시 'command: '로 시작하며, 다음 중 하나여야 합니다: forward, left, right, stop."
+                            "명령은 반드시 다음 중 하나여야 합니다: 'forward', 'left', 'right', 'stop'."
                         )
                     },
                     {
