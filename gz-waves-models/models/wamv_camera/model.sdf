@@ -298,9 +298,11 @@
             <near>0.1</near>
             <far>100</far>
           </clip>
+          <!--
           <save enabled="true">
             <path>/Users/kimminjung/Desktop/camera_output</path>
           </save>
+          -->
         </camera>
       </sensor>
     </link>

@@ -1,0 +1,149 @@
+[0.411s] DEBUG:colcon:Command line arguments: ['/Users/kimminjung/.ros2_venv/bin/colcon', 'build', '--symlink-install', '--packages-select', 'teleop_wamv']
+[0.411s] DEBUG:colcon:Parsed command line arguments: Namespace(log_base=None, log_level=None, verb_name='build', build_base='build', install_base='install', merge_install=False, symlink_install=True, test_result_base=None, continue_on_error=False, executor='parallel', parallel_workers=8, event_handlers=None, ignore_user_meta=False, metas=['./colcon.meta'], base_paths=['.'], packages_ignore=None, packages_ignore_regex=None, paths=None, packages_up_to=None, packages_up_to_regex=None, packages_above=None, packages_above_and_dependencies=None, packages_above_depth=None, packages_select_by_dep=None, packages_skip_by_dep=None, packages_skip_up_to=None, packages_select_build_failed=False, packages_skip_build_finished=False, packages_select_test_failures=False, packages_skip_test_passed=False, packages_select=['teleop_wamv'], packages_skip=None, packages_select_regex=None, packages_skip_regex=None, packages_start=None, packages_end=None, cmake_args=None, cmake_target=None, cmake_target_skip_unavailable=False, cmake_clean_cache=False, cmake_clean_first=False, cmake_force_configure=False, ament_cmake_args=None, catkin_cmake_args=None, catkin_skip_building_tests=False, verb_parser=<colcon_defaults.argument_parser.defaults.DefaultArgumentsDecorator object at 0x102967950>, verb_extension=<colcon_core.verb.build.BuildVerb object at 0x103942e10>, main=<bound method BuildVerb.main of <colcon_core.verb.build.BuildVerb object at 0x103942e10>>)
+[0.608s] Level 1:colcon.colcon_core.package_discovery:discover_packages(colcon_meta) check parameters
+[0.608s] Level 1:colcon.colcon_core.package_discovery:discover_packages(recursive) check parameters
+[0.608s] Level 1:colcon.colcon_core.package_discovery:discover_packages(ignore) check parameters
+[0.608s] Level 1:colcon.colcon_core.package_discovery:discover_packages(path) check parameters
+[0.608s] Level 1:colcon.colcon_core.package_discovery:discover_packages(colcon_meta) discover
+[0.608s] Level 1:colcon.colcon_core.package_discovery:discover_packages(recursive) discover
+[0.608s] INFO:colcon.colcon_core.package_discovery:Crawling recursively for packages in '/Users/kimminjung/vllm_control_ws/src/AI-Control-Room-VLLM'
+[0.608s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extensions ['ignore', 'ignore_ament_install']
+[0.608s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extension 'ignore'
+[0.609s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extension 'ignore_ament_install'
+[0.609s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extensions ['colcon_pkg']
+[0.609s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extension 'colcon_pkg'
+[0.609s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extensions ['colcon_meta']
+[0.609s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extension 'colcon_meta'
+[0.609s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extensions ['ros']
+[0.609s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extension 'ros'
+[0.622s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extensions ['cmake', 'python']
+[0.622s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extension 'cmake'
+[0.622s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extension 'python'
+[0.622s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extensions ['python_setup_py']
+[0.622s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extension 'python_setup_py'
+[0.622s] Level 1:colcon.colcon_core.package_identification:_identify(build) by extensions ['ignore', 'ignore_ament_install']
+[0.622s] Level 1:colcon.colcon_core.package_identification:_identify(build) by extension 'ignore'
+[0.622s] Level 1:colcon.colcon_core.package_identification:_identify(build) ignored
+[0.622s] Level 1:colcon.colcon_core.package_identification:_identify(gz-waves) by extensions ['ignore', 'ignore_ament_install']
+[0.622s] Level 1:colcon.colcon_core.package_identification:_identify(gz-waves) by extension 'ignore'
+[0.622s] Level 1:colcon.colcon_core.package_identification:_identify(gz-waves) by extension 'ignore_ament_install'
+[0.622s] Level 1:colcon.colcon_core.package_identification:_identify(gz-waves) by extensions ['colcon_pkg']
+[0.622s] Level 1:colcon.colcon_core.package_identification:_identify(gz-waves) by extension 'colcon_pkg'
+[0.622s] Level 1:colcon.colcon_core.package_identification:_identify(gz-waves) by extensions ['colcon_meta']
+[0.622s] Level 1:colcon.colcon_core.package_identification:_identify(gz-waves) by extension 'colcon_meta'
+[0.622s] Level 1:colcon.colcon_core.package_identification:_identify(gz-waves) by extensions ['ros']
+[0.622s] Level 1:colcon.colcon_core.package_identification:_identify(gz-waves) by extension 'ros'
+[0.622s] Level 1:colcon.colcon_core.package_identification:_identify(gz-waves) by extensions ['cmake', 'python']
+[0.622s] Level 1:colcon.colcon_core.package_identification:_identify(gz-waves) by extension 'cmake'
+[0.627s] Level 1:colcon.colcon_core.package_identification:_identify(gz-waves) by extension 'python'
+[0.627s] DEBUG:colcon.colcon_core.package_identification:Package 'gz-waves' with type 'cmake' and name 'gz-waves'
+[0.628s] Level 1:colcon.colcon_core.package_identification:_identify(gz-waves-models) by extensions ['ignore', 'ignore_ament_install']
+[0.628s] Level 1:colcon.colcon_core.package_identification:_identify(gz-waves-models) by extension 'ignore'
+[0.628s] Level 1:colcon.colcon_core.package_identification:_identify(gz-waves-models) by extension 'ignore_ament_install'
+[0.628s] Level 1:colcon.colcon_core.package_identification:_identify(gz-waves-models) by extensions ['colcon_pkg']
+[0.628s] Level 1:colcon.colcon_core.package_identification:_identify(gz-waves-models) by extension 'colcon_pkg'
+[0.628s] Level 1:colcon.colcon_core.package_identification:_identify(gz-waves-models) by extensions ['colcon_meta']
+[0.628s] Level 1:colcon.colcon_core.package_identification:_identify(gz-waves-models) by extension 'colcon_meta'
+[0.628s] Level 1:colcon.colcon_core.package_identification:_identify(gz-waves-models) by extensions ['ros']
+[0.628s] Level 1:colcon.colcon_core.package_identification:_identify(gz-waves-models) by extension 'ros'
+[0.630s] DEBUG:colcon.colcon_core.package_identification:Package 'gz-waves-models' with type 'ros.ament_cmake' and name 'waves_models'
+[0.630s] Level 1:colcon.colcon_core.package_identification:_identify(install) by extensions ['ignore', 'ignore_ament_install']
+[0.630s] Level 1:colcon.colcon_core.package_identification:_identify(install) by extension 'ignore'
+[0.630s] Level 1:colcon.colcon_core.package_identification:_identify(install) ignored
+[0.630s] Level 1:colcon.colcon_core.package_identification:_identify(log) by extensions ['ignore', 'ignore_ament_install']
+[0.630s] Level 1:colcon.colcon_core.package_identification:_identify(log) by extension 'ignore'
+[0.630s] Level 1:colcon.colcon_core.package_identification:_identify(log) ignored
+[0.630s] Level 1:colcon.colcon_core.package_identification:_identify(ros_gz_ai_control) by extensions ['ignore', 'ignore_ament_install']
+[0.630s] Level 1:colcon.colcon_core.package_identification:_identify(ros_gz_ai_control) by extension 'ignore'
+[0.630s] Level 1:colcon.colcon_core.package_identification:_identify(ros_gz_ai_control) by extension 'ignore_ament_install'
+[0.630s] Level 1:colcon.colcon_core.package_identification:_identify(ros_gz_ai_control) by extensions ['colcon_pkg']
+[0.630s] Level 1:colcon.colcon_core.package_identification:_identify(ros_gz_ai_control) by extension 'colcon_pkg'
+[0.630s] Level 1:colcon.colcon_core.package_identification:_identify(ros_gz_ai_control) by extensions ['colcon_meta']
+[0.630s] Level 1:colcon.colcon_core.package_identification:_identify(ros_gz_ai_control) by extension 'colcon_meta'
+[0.631s] Level 1:colcon.colcon_core.package_identification:_identify(ros_gz_ai_control) by extensions ['ros']
+[0.631s] Level 1:colcon.colcon_core.package_identification:_identify(ros_gz_ai_control) by extension 'ros'
+[0.632s] DEBUG:colcon.colcon_core.package_identification:Package 'ros_gz_ai_control' with type 'ros.ament_python' and name 'ros_gz_ai_control'
+[0.632s] Level 1:colcon.colcon_core.package_identification:_identify(teleop_wamv) by extensions ['ignore', 'ignore_ament_install']
+[0.632s] Level 1:colcon.colcon_core.package_identification:_identify(teleop_wamv) by extension 'ignore'
+[0.632s] Level 1:colcon.colcon_core.package_identification:_identify(teleop_wamv) by extension 'ignore_ament_install'
+[0.632s] Level 1:colcon.colcon_core.package_identification:_identify(teleop_wamv) by extensions ['colcon_pkg']
+[0.632s] Level 1:colcon.colcon_core.package_identification:_identify(teleop_wamv) by extension 'colcon_pkg'
+[0.632s] Level 1:colcon.colcon_core.package_identification:_identify(teleop_wamv) by extensions ['colcon_meta']
+[0.632s] Level 1:colcon.colcon_core.package_identification:_identify(teleop_wamv) by extension 'colcon_meta'
+[0.633s] Level 1:colcon.colcon_core.package_identification:_identify(teleop_wamv) by extensions ['ros']
+[0.633s] Level 1:colcon.colcon_core.package_identification:_identify(teleop_wamv) by extension 'ros'
+[0.633s] DEBUG:colcon.colcon_core.package_identification:Package 'teleop_wamv' with type 'ros.ament_python' and name 'teleop_wamv'
+[0.633s] Level 1:colcon.colcon_core.package_discovery:discover_packages(recursive) using defaults
+[0.633s] Level 1:colcon.colcon_core.package_discovery:discover_packages(ignore) discover
+[0.633s] Level 1:colcon.colcon_core.package_discovery:discover_packages(ignore) using defaults
+[0.633s] Level 1:colcon.colcon_core.package_discovery:discover_packages(path) discover
+[0.633s] Level 1:colcon.colcon_core.package_discovery:discover_packages(path) using defaults
+[0.681s] INFO:colcon.colcon_core.package_selection:Skipping not selected package 'gz-waves' in 'gz-waves'
+[0.681s] INFO:colcon.colcon_core.package_selection:Skipping not selected package 'ros_gz_ai_control' in 'ros_gz_ai_control'
+[0.681s] INFO:colcon.colcon_core.package_selection:Skipping not selected package 'waves_models' in 'gz-waves-models'
+[0.681s] Level 5:colcon.colcon_core.verb:set package 'teleop_wamv' build argument 'cmake_args' from command line to 'None'
+[0.681s] Level 5:colcon.colcon_core.verb:set package 'teleop_wamv' build argument 'cmake_target' from command line to 'None'
+[0.681s] Level 5:colcon.colcon_core.verb:set package 'teleop_wamv' build argument 'cmake_target_skip_unavailable' from command line to 'False'
+[0.681s] Level 5:colcon.colcon_core.verb:set package 'teleop_wamv' build argument 'cmake_clean_cache' from command line to 'False'
+[0.681s] Level 5:colcon.colcon_core.verb:set package 'teleop_wamv' build argument 'cmake_clean_first' from command line to 'False'
+[0.681s] Level 5:colcon.colcon_core.verb:set package 'teleop_wamv' build argument 'cmake_force_configure' from command line to 'False'
+[0.681s] Level 5:colcon.colcon_core.verb:set package 'teleop_wamv' build argument 'ament_cmake_args' from command line to 'None'
+[0.681s] Level 5:colcon.colcon_core.verb:set package 'teleop_wamv' build argument 'catkin_cmake_args' from command line to 'None'
+[0.681s] Level 5:colcon.colcon_core.verb:set package 'teleop_wamv' build argument 'catkin_skip_building_tests' from command line to 'False'
+[0.681s] DEBUG:colcon.colcon_core.verb:Building package 'teleop_wamv' with the following arguments: {'ament_cmake_args': None, 'build_base': '/Users/kimminjung/vllm_control_ws/src/AI-Control-Room-VLLM/build/teleop_wamv', 'catkin_cmake_args': None, 'catkin_skip_building_tests': False, 'cmake_args': None, 'cmake_clean_cache': False, 'cmake_clean_first': False, 'cmake_force_configure': False, 'cmake_target': None, 'cmake_target_skip_unavailable': False, 'install_base': '/Users/kimminjung/vllm_control_ws/src/AI-Control-Room-VLLM/install/teleop_wamv', 'merge_install': False, 'path': '/Users/kimminjung/vllm_control_ws/src/AI-Control-Room-VLLM/teleop_wamv', 'symlink_install': True, 'test_result_base': None}
+[0.682s] INFO:colcon.colcon_core.executor:Executing jobs using 'parallel' executor
+[0.682s] DEBUG:colcon.colcon_parallel_executor.executor.parallel:run_until_complete
+[0.682s] INFO:colcon.colcon_ros.task.ament_python.build:Building ROS package in '/Users/kimminjung/vllm_control_ws/src/AI-Control-Room-VLLM/teleop_wamv' with build type 'ament_python'
+[0.682s] Level 1:colcon.colcon_core.shell:create_environment_hook('teleop_wamv', 'ament_prefix_path')
+[0.688s] INFO:colcon.colcon_core.plugin_system:Skipping extension 'colcon_core.shell.bat': Not used on non-Windows systems
+[0.688s] INFO:colcon.colcon_core.shell:Creating environment hook '/Users/kimminjung/vllm_control_ws/src/AI-Control-Room-VLLM/install/teleop_wamv/share/teleop_wamv/hook/ament_prefix_path.ps1'
+[0.689s] INFO:colcon.colcon_core.shell:Creating environment descriptor '/Users/kimminjung/vllm_control_ws/src/AI-Control-Room-VLLM/install/teleop_wamv/share/teleop_wamv/hook/ament_prefix_path.dsv'
+[0.689s] INFO:colcon.colcon_core.shell:Creating environment hook '/Users/kimminjung/vllm_control_ws/src/AI-Control-Room-VLLM/install/teleop_wamv/share/teleop_wamv/hook/ament_prefix_path.sh'
+[0.690s] INFO:colcon.colcon_core.shell:Skip shell extension 'powershell' for command environment: Not usable outside of PowerShell
+[0.690s] DEBUG:colcon.colcon_core.shell:Skip shell extension 'dsv' for command environment
+[1.549s] INFO:colcon.colcon_core.task.python.build:Building Python package in '/Users/kimminjung/vllm_control_ws/src/AI-Control-Room-VLLM/teleop_wamv'
+[1.550s] INFO:colcon.colcon_core.shell:Skip shell extension 'powershell' for command environment: Not usable outside of PowerShell
+[1.550s] DEBUG:colcon.colcon_core.shell:Skip shell extension 'dsv' for command environment
+[2.490s] DEBUG:colcon.colcon_core.event_handler.log_command:Invoking command in '/Users/kimminjung/vllm_control_ws/src/AI-Control-Room-VLLM/build/teleop_wamv': PYTHONPATH=/Users/kimminjung/vllm_control_ws/src/AI-Control-Room-VLLM/build/teleop_wamv/prefix_override:/Users/kimminjung/.ros2_venv/lib/python3.11/site-packages/colcon_core/task/python/colcon_distutils_commands:/Users/kimminjung/vllm_control_ws/src/AI-Control-Room-VLLM/install/teleop_wamv/lib/python3.11/site-packages:${PYTHONPATH} SHLVL=2 VIRTUAL_ENV_PROMPT=(.ros2_venv) _=/usr/bin/env /Users/kimminjung/.ros2_venv/bin/python3 -W ignore:setup.py install is deprecated -W ignore:easy_install command is deprecated setup.py develop --editable --build-directory /Users/kimminjung/vllm_control_ws/src/AI-Control-Room-VLLM/build/teleop_wamv/build --no-deps symlink_data
+[3.248s] Level 1:colcon.colcon_core.shell:create_environment_hook('teleop_wamv', 'pythonpath_develop')
+[3.249s] INFO:colcon.colcon_core.shell:Creating environment hook '/Users/kimminjung/vllm_control_ws/src/AI-Control-Room-VLLM/build/teleop_wamv/share/teleop_wamv/hook/pythonpath_develop.ps1'
+[3.249s] DEBUG:colcon.colcon_core.event_handler.log_command:Invoked command in '/Users/kimminjung/vllm_control_ws/src/AI-Control-Room-VLLM/build/teleop_wamv' returned '0': PYTHONPATH=/Users/kimminjung/vllm_control_ws/src/AI-Control-Room-VLLM/build/teleop_wamv/prefix_override:/Users/kimminjung/.ros2_venv/lib/python3.11/site-packages/colcon_core/task/python/colcon_distutils_commands:/Users/kimminjung/vllm_control_ws/src/AI-Control-Room-VLLM/install/teleop_wamv/lib/python3.11/site-packages:${PYTHONPATH} SHLVL=2 VIRTUAL_ENV_PROMPT=(.ros2_venv) _=/usr/bin/env /Users/kimminjung/.ros2_venv/bin/python3 -W ignore:setup.py install is deprecated -W ignore:easy_install command is deprecated setup.py develop --editable --build-directory /Users/kimminjung/vllm_control_ws/src/AI-Control-Room-VLLM/build/teleop_wamv/build --no-deps symlink_data
+[3.250s] INFO:colcon.colcon_core.shell:Creating environment descriptor '/Users/kimminjung/vllm_control_ws/src/AI-Control-Room-VLLM/build/teleop_wamv/share/teleop_wamv/hook/pythonpath_develop.dsv'
+[3.250s] INFO:colcon.colcon_core.shell:Creating environment hook '/Users/kimminjung/vllm_control_ws/src/AI-Control-Room-VLLM/build/teleop_wamv/share/teleop_wamv/hook/pythonpath_develop.sh'
+[3.257s] Level 1:colcon.colcon_core.environment:checking '/Users/kimminjung/vllm_control_ws/src/AI-Control-Room-VLLM/install/teleop_wamv' for CMake module files
+[3.258s] Level 1:colcon.colcon_core.environment:checking '/Users/kimminjung/vllm_control_ws/src/AI-Control-Room-VLLM/install/teleop_wamv' for CMake config files
+[3.258s] Level 1:colcon.colcon_core.environment:checking '/Users/kimminjung/vllm_control_ws/src/AI-Control-Room-VLLM/install/teleop_wamv/lib'
+[3.258s] Level 1:colcon.colcon_core.environment:checking '/Users/kimminjung/vllm_control_ws/src/AI-Control-Room-VLLM/install/teleop_wamv/bin'
+[3.258s] Level 1:colcon.colcon_core.environment:checking '/Users/kimminjung/vllm_control_ws/src/AI-Control-Room-VLLM/install/teleop_wamv/lib/pkgconfig/teleop_wamv.pc'
+[3.259s] Level 1:colcon.colcon_core.environment:checking '/Users/kimminjung/vllm_control_ws/src/AI-Control-Room-VLLM/install/teleop_wamv/lib/python3.11/site-packages'
+[3.259s] Level 1:colcon.colcon_core.shell:create_environment_hook('teleop_wamv', 'pythonpath')
+[3.259s] INFO:colcon.colcon_core.shell:Creating environment hook '/Users/kimminjung/vllm_control_ws/src/AI-Control-Room-VLLM/install/teleop_wamv/share/teleop_wamv/hook/pythonpath.ps1'
+[3.259s] INFO:colcon.colcon_core.shell:Creating environment descriptor '/Users/kimminjung/vllm_control_ws/src/AI-Control-Room-VLLM/install/teleop_wamv/share/teleop_wamv/hook/pythonpath.dsv'
+[3.259s] INFO:colcon.colcon_core.shell:Creating environment hook '/Users/kimminjung/vllm_control_ws/src/AI-Control-Room-VLLM/install/teleop_wamv/share/teleop_wamv/hook/pythonpath.sh'
+[3.260s] Level 1:colcon.colcon_core.environment:checking '/Users/kimminjung/vllm_control_ws/src/AI-Control-Room-VLLM/install/teleop_wamv/bin'
+[3.260s] Level 1:colcon.colcon_core.environment:create_environment_scripts_only(teleop_wamv)
+[3.260s] INFO:colcon.colcon_core.shell:Creating package script '/Users/kimminjung/vllm_control_ws/src/AI-Control-Room-VLLM/install/teleop_wamv/share/teleop_wamv/package.ps1'
+[3.261s] INFO:colcon.colcon_core.shell:Creating package descriptor '/Users/kimminjung/vllm_control_ws/src/AI-Control-Room-VLLM/install/teleop_wamv/share/teleop_wamv/package.dsv'
+[3.261s] INFO:colcon.colcon_core.shell:Creating package script '/Users/kimminjung/vllm_control_ws/src/AI-Control-Room-VLLM/install/teleop_wamv/share/teleop_wamv/package.sh'
+[3.262s] INFO:colcon.colcon_core.shell:Creating package script '/Users/kimminjung/vllm_control_ws/src/AI-Control-Room-VLLM/install/teleop_wamv/share/teleop_wamv/package.bash'
+[3.262s] INFO:colcon.colcon_core.shell:Creating package script '/Users/kimminjung/vllm_control_ws/src/AI-Control-Room-VLLM/install/teleop_wamv/share/teleop_wamv/package.zsh'
+[3.263s] Level 1:colcon.colcon_core.environment:create_file_with_runtime_dependencies(/Users/kimminjung/vllm_control_ws/src/AI-Control-Room-VLLM/install/teleop_wamv/share/colcon-core/packages/teleop_wamv)
+[3.263s] DEBUG:colcon.colcon_parallel_executor.executor.parallel:closing loop
+[3.263s] DEBUG:colcon.colcon_parallel_executor.executor.parallel:loop closed
+[3.263s] DEBUG:colcon.colcon_parallel_executor.executor.parallel:run_until_complete finished with '0'
+[3.264s] DEBUG:colcon.colcon_core.event_reactor:joining thread
+[3.267s] INFO:colcon.colcon_core.plugin_system:Skipping extension 'colcon_notification.desktop_notification.notify2': 'notify2' not found
+[3.267s] INFO:colcon.colcon_core.plugin_system:Skipping extension 'colcon_notification.desktop_notification.notify_send': Not used on non-Linux systems
+[3.267s] INFO:colcon.colcon_core.plugin_system:Skipping extension 'colcon_notification.desktop_notification.win32': Not used on non-Windows systems
+[3.267s] INFO:colcon.colcon_notification.desktop_notification:Sending desktop notification using 'terminal_notifier'
+[3.404s] DEBUG:colcon.colcon_core.event_reactor:joined thread
+[3.404s] INFO:colcon.colcon_core.shell:Creating prefix script '/Users/kimminjung/vllm_control_ws/src/AI-Control-Room-VLLM/install/local_setup.ps1'
+[3.405s] INFO:colcon.colcon_core.shell:Creating prefix util module '/Users/kimminjung/vllm_control_ws/src/AI-Control-Room-VLLM/install/_local_setup_util_ps1.py'
+[3.407s] INFO:colcon.colcon_core.shell:Creating prefix chain script '/Users/kimminjung/vllm_control_ws/src/AI-Control-Room-VLLM/install/setup.ps1'
+[3.426s] INFO:colcon.colcon_core.shell:Creating prefix script '/Users/kimminjung/vllm_control_ws/src/AI-Control-Room-VLLM/install/local_setup.sh'
+[3.427s] INFO:colcon.colcon_core.shell:Creating prefix util module '/Users/kimminjung/vllm_control_ws/src/AI-Control-Room-VLLM/install/_local_setup_util_sh.py'
+[3.428s] INFO:colcon.colcon_core.shell:Creating prefix chain script '/Users/kimminjung/vllm_control_ws/src/AI-Control-Room-VLLM/install/setup.sh'
+[3.448s] INFO:colcon.colcon_core.shell:Creating prefix script '/Users/kimminjung/vllm_control_ws/src/AI-Control-Room-VLLM/install/local_setup.bash'
+[3.448s] INFO:colcon.colcon_core.shell:Creating prefix chain script '/Users/kimminjung/vllm_control_ws/src/AI-Control-Room-VLLM/install/setup.bash'
+[3.467s] INFO:colcon.colcon_core.shell:Creating prefix script '/Users/kimminjung/vllm_control_ws/src/AI-Control-Room-VLLM/install/local_setup.zsh'
+[3.468s] INFO:colcon.colcon_core.shell:Creating prefix chain script '/Users/kimminjung/vllm_control_ws/src/AI-Control-Room-VLLM/install/setup.zsh'

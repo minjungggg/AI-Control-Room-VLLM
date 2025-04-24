@@ -39,4 +39,14 @@ class Base64Publisher(Node):
             msg.data = encoded_string
             self.publisher_.publish(msg)
             self.last_published = latest_image_path
+            
+def main(args=None):
+    rclpy.init(args=args)
+    node = Base64Publisher()
+    rclpy.spin(node)
+    node.destroy_node()
+    rclpy.shutdown()
+
+if __name__ == '__main__':
+    main()
 

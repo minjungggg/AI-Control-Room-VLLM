@@ -1,0 +1,8 @@
+[console_scripts]
+auto_thrust_publisher = teleop_wamv.auto_thrust_publisher:main
+base64_pub = teleop_wamv.base64_pub:main
+gpt_bridge = teleop_wamv.gpt_bridge:main
+gpt_description = teleop_wamv.gpt_description:main
+image_saver = teleop_wamv.image_saver:main
+keyboard_publisher = teleop_wamv.keyboard_publisher:main
+
