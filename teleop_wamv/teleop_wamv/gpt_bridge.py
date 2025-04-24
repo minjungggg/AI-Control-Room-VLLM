@@ -9,25 +9,31 @@ class GPTBridge(Node):
         super().__init__('gpt_bridge')
         self.subscription = self.create_subscription(
             String,
-            'image_base64',
+            'gpt_description',
             self.listener_callback,
             10)
         self.publisher = self.create_publisher(String, 'gpt_command', 10)
         self.client = openai.OpenAI(api_key=os.getenv("GPT_API_KEY"))
 
     def listener_callback(self, msg):
-        image_base64 = msg.data
         try:
             self.get_logger().info('GPT에게 이미지 전달 중...')
             response = self.client.chat.completions.create(
                 model="gpt-4-turbo",
                 messages=[
-                    {"role": "user", "content": [
-                        {"type": "text", "text": "이 이미지를 분석해서 어떤 방향으로 이동해야 하는지 판단해서 명령어를 내려줘. 가능한 명령어는 forward, left, right, stop 중 하나야. 그리고 반드시 'command: ' 뒤에 명령어 하나만 줘."},
-                        {"type": "image_url", "image_url": {
-                            "url": f"data:image/png;base64,{image_base64}"
-                        }}
-                    ]}
+                    {
+                        "role": "system",
+                        "content": (
+                            "당신은 자율 수상 드론(WAM-V)을 제어하는 AI입니다."
+                            "사용자로부터 이미지 설명을 입력받고, 이에 따라 드론이 진행해야 할 명령을 생성합니다."
+                            "명령은 반드시 'command: '로 시작하며, 다음 중 하나여야 합니다: forward, left, right, stop."
+                        )
+                    },
+                    {
+                        "role": "user", 
+                        "content": f"설명: {msg.data}\n이 설명을 바탕으로 바다 위 물체에 부딪히지 않고 고무오리까지 도달할 수 있는 적절한 명령을 한 줄로 내려줘."
+                        
+                    }
                 ],
                 max_tokens=100
             )
