@@ -125,8 +125,8 @@ class GPTImageRobotController(Node):
                     {
                         "role": "user",
                         "content": (
-                            "I want to find a yellow duck and move drone's left engine to position it in front of the yellow duck."
-                            "If you haven't found the yellow duck, print out the 'move' command to move, and find the yellow duck as you move."
+                            "I want to find a yellow duck, and place it close between the grey drone engines shown in the picture."
+                            "If you haven't found a yellow duck, print out a 'move' command to move and look for a yellow duck on the move."
                         )
                     }
                 ],

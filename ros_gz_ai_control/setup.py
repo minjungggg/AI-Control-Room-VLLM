@@ -31,6 +31,7 @@ setup(
             'image_saver = ros_gz_ai_control.get_image.image_saver:main',
             'thrust_control = ros_gz_ai_control.thrust_control.thrust_control:main',
             'gpt_commander = ros_gz_ai_control.thrust_control.gpt_commander:main',
+            'distance_calculator = ros_gz_ai_control.thrust_control.distance:main',
         ],
     },
 )

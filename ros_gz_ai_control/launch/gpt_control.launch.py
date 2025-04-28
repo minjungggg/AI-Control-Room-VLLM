@@ -14,5 +14,11 @@ def generate_launch_description():
             executable='gpt_commander',
             name='gpt_image_robot_controller',
             output='screen'
+        ),
+        Node(
+            package='ros_gz_ai_control',
+            executable='distance_calculator',
+            name='distance_calculator_node',
+            output='screen'
         )
     ])
