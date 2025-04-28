@@ -8,7 +8,6 @@ class CumulativeDistanceNode(Node):
     def __init__(self):
         super().__init__('cumulative_distance_node')
 
-        # pose subscription
         self.pose_subscription = self.create_subscription(
             PoseStamped,
             '/model/wamv_camera/pose',
@@ -16,7 +15,6 @@ class CumulativeDistanceNode(Node):
             10
         )
 
-        # clock subscription
         self.clock_subscription = self.create_subscription(
             Clock,
             '/clock',
@@ -26,9 +24,7 @@ class CumulativeDistanceNode(Node):
 
         self.prev_position = None
         self.total_distance = 0.0
-        self.latest_sim_time_sec = 0  # clock.sec save
-
-        self.get_logger().info("Cumulative Distance Node Started")
+        self.latest_sim_time_sec = 0
 
     def pose_callback(self, msg: PoseStamped):
         pos = msg.pose.position
@@ -36,9 +32,6 @@ class CumulativeDistanceNode(Node):
 
         if self.prev_position is None:
             self.prev_position = current_position
-            self.get_logger().info(
-                f"First position received: x={pos.x:.2f}, y={pos.y:.2f}, z={pos.z:.2f}"
-            )
             return
 
         dx = current_position[0] - self.prev_position[0]
@@ -48,20 +41,13 @@ class CumulativeDistanceNode(Node):
         distance = math.sqrt(dx**2 + dy**2 + dz**2)
         self.total_distance += distance
 
-        self.get_logger().info(
-            f"Step Distance: {distance:.3f} m | Total Distance: {self.total_distance:.3f} m"
-        )
-
         self.prev_position = current_position
 
     def clock_callback(self, msg: Clock):
-        # last simulation time update
         self.latest_sim_time_sec = msg.clock.sec
 
     def on_shutdown(self):
-        # print distance in red when shutting down
         print(f"\033[91m[FINAL] Cumulative Distance: {self.total_distance:.3f} meters\033[0m")
-        # print simulation time in green when shutting down
         print(f"\033[92m[FINAL] Simulation Time: {self.latest_sim_time_sec} seconds\033[0m")
 
 def main(args=None):
