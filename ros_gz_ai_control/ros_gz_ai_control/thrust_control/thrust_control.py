@@ -23,8 +23,8 @@ class RobotMotionController(Node):
         self.create_subscription(String, 'stop_robot', self.stop_callback, 10)
         
         # 파라미터 선언 및 기본값 설정
-        self.declare_parameter('forward_thrust', 20.0)
-        self.declare_parameter('reverse_thrust', -20.0)
+        self.declare_parameter('forward_thrust', 10.0)
+        self.declare_parameter('reverse_thrust', -10.0)
         self.declare_parameter('turn_thrust', 15.0)
         self.declare_parameter('reset_delay', 3.0)
 

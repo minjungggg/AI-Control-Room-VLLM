@@ -79,26 +79,36 @@ class GPTImageRobotController(Node):
                 image_data = self._to_base64(image_bytes)
                 self.get_logger().info(f"***************[FILE] {os.path.basename(latest_image_path)}***************")
 
-            # 1단계: GPT에게 이미지 설명 요청
+            # request GPT to analyze the image
             describe_response = openai.chat.completions.create(
                 model="gpt-4o",
                 messages=[
                     {
                         "role": "system",
                         "content": (
-                            "You are acting as a judge for the water drone control system on the voyage."
-                            "Water drones are twin-shaped, and the black protrusions at the bottom of the image are engines on both sides of the drone, and this interval is the actual horizontal length of the drone. "
-                            "The vertical length is about twice this length, and the camera is located 0.85m behind the front, this location is about one-third the vertical length of the drone. "
-                            "Recognize the drone's size based on the above description. Once again, the gray object at the bottom of the center of the image is the engine part of the drone. It is not an obstacle."
-                            "Analyze the image to determine the location of the buoy, the presence of obstacles, and then explain the direction of navigation by considering the size of the drone."
-                            "It would be nice to listen to the explanation and be detailed enough for you to draw a similar picture."
+                            "You are acting as a judge for the water drone control system on the voyage. "
+                            "The water drone is twin-hull (catamaran-style). The gray objects at the bottom center of the image are engines, attached to both sides of the drone—not obstacles. "
+                            "The horizontal width between these engines represents the actual width of the drone. The vertical length is about twice this length. "
+                            "The camera is mounted 0.85 meters from the front of the drone. This is roughly one-third from the front toward the back of the drone. "
+                            "Gray engine parts are part of the drone, not obstacles. All other visible objects (e.g., buoys or ducks) should be analyzed for position and proximity. "
+                            "Use the drone's known dimensions as a reference to estimate distances. If an object is more than 1 meter away, it is not a threat. Closer than 1 meter? That may require avoidance. "
+                            "Analyze the image and output the result in the following JSON format only: "
+                            "{"
+                            "  \"obstacles\": ["
+                            "    {\"name\": \"red buoy\", \"position\": \"front\", \"distance\": 1.5, \"threat\": false},"
+                            "    {\"name\": \"black buoy\", \"position\": \"front-left\", \"distance\": 0.8, \"threat\": true}"
+                            "  ],"
+                            "  \"duck\": {\"found\": true, \"position\": \"front-right\", \"distance\": 0.6},"
+                            "  \"any_threat\": true"
+                            "}"
                         )
+
                     },
                     {
                         "role": "user",
                         "content": [
-                            {"type": "text", "text": "Please analyze the image and explain the surrounding situation."},
-                            {"type": "image_url", "image_url": {"url": "data:image/png;base64," + image_data}}
+                            {"type": "image_url", "image_url": {"url": "data:image/png;base64," + image_data}},
+                            {"type": "text", "text": "Please analyze the image and explain the surrounding situation."}   
                         ]
                     }
                 ],
@@ -110,7 +120,7 @@ class GPTImageRobotController(Node):
             description = describe_response.choices[0].message.content.strip()
             self.get_logger().info(f"[DESCRIPTION] {description}")
 
-            # 2단계: GPT에게 stop 또는 move 판단 요청
+            # request GPT to make a decision 'stop' or 'move'
             decision_response = openai.chat.completions.create(
                 model="gpt-4o",
                 messages=[
@@ -118,6 +128,7 @@ class GPTImageRobotController(Node):
                         "role": "system",
                         "content": (
                             "You are the navigation judgment system of a sailing drone. Based on the description, respond only to either 'stop' or 'move'. "
+                            "If an object (like a buoy) is more than 1 meter away, it is not a threat—no avoidance action is needed. Closer than 1 meter? That may require movement or avoidance."
                             "Be sure to print out only one word without explanation."
                         )
                     },
@@ -148,7 +159,7 @@ class GPTImageRobotController(Node):
                 rclpy.shutdown()
                 return
 
-            # 3단계: move인 경우 방향 판단
+            # if move decision
             self.get_logger().info("COMMAND 'move' ")
             self.move_pub.publish(String(data="move"))
 
@@ -159,9 +170,11 @@ class GPTImageRobotController(Node):
                         "role": "system",
                         "content": (
                             "You are the system for determining the direction of a sailing drone. Be sure to respond with only one of 'w', 'a', 's', and 'd'."
-                            "Water drones are twin-shaped, and the black protrusions at the bottom of the image are engines on both sides of the drone, and this interval is the actual horizontal length of the drone. "
-                            "The vertical length is about twice this length, and the camera is located 0.85m behind the front, this location is about one-third the vertical length of the drone. "
-                            "Recognize the drone's size based on the above description. Once again, the gray object at the bottom of the center of the image is the engine part of the drone. It is not an obstacle."
+                            "The water drone is twin-hull (catamaran-style). The gray objects at the bottom center of the image are engines, attached to both sides of the drone—not obstacles."
+                            "The horizontal width between these engines represents the actual width of the drone. The vertical length is about twice this length"
+                            "The camera is mounted 0.85 meters from the front of the drone. This is roughly one-third from the front toward the back of the drone."
+                            "Gray engine parts are part of the drone, not obstacles. All other visible objects (e.g., buoys) should be analyzed for position and proximity. Recognize the drone's size based on the above description."
+                            "If an object (like a buoy) is more than 1 meter away, it is not a threat—no avoidance action is needed. Closer than 1 meter? That may require avoidance."
                             "'w' = Front, 'a' = left turn, 's' = backward, 'd' = right turn. Print only one letter without explanation."
                         )
                     },
@@ -169,9 +182,9 @@ class GPTImageRobotController(Node):
                     {
                         "role": "user",
                         "content": (
-                            "I want to find a yellow duck and move drone's left engine to position it in front of the yellow duck."
+                            "I want to find a yellow duck, and place it close between the grey drone engines shown in the picture."
                             "If there is no 'duck' in the description, let's move to avoid obstacles based on the description so we can find the duck."
-                            "If there is no risk of hitting an obstacle, or there is no in the description, it is recommended that you order 'a' or 'd' to determine the rotation."
+                            "If there is no risk of hitting an obstacle, it is recommended that move closer to the obstacle "
                         )
                     }
                 ],
