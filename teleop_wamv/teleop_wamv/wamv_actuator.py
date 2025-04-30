@@ -2,6 +2,7 @@ import rclpy
 from rclpy.node import Node
 from std_msgs.msg import String
 from std_msgs.msg import Float64
+import time
 
 class WamvActuator(Node):
     def __init__(self):
@@ -20,18 +21,26 @@ class WamvActuator(Node):
         thrust = Float64()
 
         if command == 'forward':
+            self.is_stopped = False
             thrust.data = 30.0
             self.left_pub.publish(thrust)
             self.right_pub.publish(thrust)
         elif command == 'left':
+            self.is_stopped = False
             self.left_pub.publish(Float64(data=15.0))
             self.right_pub.publish(Float64(data=30.0))
         elif command == 'right':
+            self.is_stopped = False
             self.left_pub.publish(Float64(data=30.0))
             self.right_pub.publish(Float64(data=15.0))
         elif command == 'stop':
-            self.left_pub.publish(Float64(data=-10.0))
-            self.right_pub.publish(Float64(data=-10.0))
+            if not self.is_stopped:
+                self.left_pub.publish(Float64(data=-10))
+                self.right_pub.publish(Float64(data=-10))
+                time.sleep(1.0)
+                self.left_pub.publish(Float64(data=0.0))
+                self.right_pub.publish(Float64(data=0.0))
+                self.is_stopped = True
         else:
             self.get_logger().warn(f'알 수 없는 명령: {command}')
             return
