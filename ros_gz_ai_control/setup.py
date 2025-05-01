@@ -32,6 +32,7 @@ setup(
             'thrust_control = ros_gz_ai_control.thrust_control.thrust_control:main',
             'gpt_commander = ros_gz_ai_control.thrust_control.gpt_commander:main',
             'distance_calculator = ros_gz_ai_control.thrust_control.distance:main',
+            'imu_velocity = ros_gz_ai_control.thrust_control.imu_velocity_node:main',
         ],
     },
 )
