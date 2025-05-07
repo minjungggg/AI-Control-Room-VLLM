@@ -81,7 +81,8 @@ class GPTImageRobotController(Node):
         img = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
         return img
 
-    def request_gpt_description(self, image_data):
+    def request_gpt_description(self, image_data, image_path):
+        self.get_logger().info(f"*****************************{image_path}*****************************")
         velocity_note = f"Current velocity: {self.latest_velocity_data}" if self.latest_velocity_data else "Velocity data not available."
         response = openai.chat.completions.create(
             model="gpt-4o",
@@ -133,6 +134,8 @@ class GPTImageRobotController(Node):
         parsed = json.loads(description_str)
         desc = parsed["description"]
         hsv_dict = {k: (tuple(v[0]), tuple(v[1])) for k, v in parsed["color_hsv_dict"].items()}
+        self.get_logger().info(f"[DESCRIPTION]\n{desc}")
+        self.get_logger().info(f"[HSV Dictionary]\n{hsv_dict}")
         return desc, hsv_dict
 
     def find_bottom_pixel(self, image, lower_hsv, upper_hsv):
@@ -145,23 +148,36 @@ class GPTImageRobotController(Node):
         return tuple(largest[largest[:, :, 1].argmax()][0])  # (x, y)
 
     def estimate_distance(self, x, y, width=1920, height=1080, hfov=90.0, vfov=60.0, camera_height=1.1):
-        dx = x - width / 2
-        dy = height / 2 - y
-        angle_x = math.radians((dx / width) * hfov)
-        angle_y = math.radians((dy / height) * vfov)
-        angle = math.sqrt(angle_x ** 2 + angle_y ** 2)
-        if angle < 1e-3:
+        center_x = width / 2
+        center_y = height / 2
+
+        # 각도를 라디안 단위로 변환
+        hfov_rad = math.radians(hfov)
+        vfov_rad = math.radians(vfov)
+
+        # 화면 중심 기준으로 x, y 각도 계산
+        theta_x = hfov_rad * ((x - center_x) / width)
+        theta_y = vfov_rad * ((y - center_y) / height)
+
+        # 수직 각도가 너무 작으면 계산 불가 (기울기 무한)
+        if abs(theta_y) < 1e-3:
             return None
-        return round(camera_height / math.tan(angle), 2)
+
+        # 수직 거리 (z축 기준)
+        z = camera_height / math.tan(theta_y)
+
+        # 수평 보정된 직선 거리
+        distance = z / math.cos(theta_x)
+
+        return round(distance, 2) if distance > 0 and math.isfinite(distance) else "unreachable"
+
 
     def calculate_object_distances(self, desc, hsv_dict, image):
-        objects = desc.get("obstacles", [])
-        
-        if "duck" in desc and isinstance(desc["duck"], dict):
-            desc["duck"]["name"] = "duck"
-            objects.append(desc["duck"])
+        obstacles = desc.get("obstacles", [])
+        duck = desc.get("duck") if isinstance(desc.get("duck"), dict) else None
 
-        for obj in objects:
+        # 거리 계산 대상: buoy + barrage
+        for obj in obstacles:
             color = obj.get("color", "").lower()
             if color not in hsv_dict:
                 obj["distance"] = "unknown"
@@ -172,15 +188,28 @@ class GPTImageRobotController(Node):
                 obj["distance"] = "unknown"
                 continue
 
-            distance = self.estimate_distance(*bottom)
+            x, y = bottom
+            distance = self.estimate_distance(x, y)
+            obj["distance"] = round(distance, 2) if isinstance(distance, (float, int)) and math.isfinite(distance) and distance > 0 else "unreachable"
+            self.get_logger().info(f"[DEBUG] {obj['name']}: bottom=({x},{y}), distance={obj['distance']}")
 
-            # 🛡️ JSON 직렬화 안전성을 위해 distance 값 검증
-            if distance is None or not isinstance(distance, (float, int)) or not math.isfinite(distance):
-                obj["distance"] = "unreachable"
+        # duck은 따로 처리해서 덮어쓰기
+        if duck:
+            color = duck.get("color", "").lower()
+            if color in hsv_dict:
+                bottom = self.find_bottom_pixel(image, *hsv_dict[color])
+                if bottom:
+                    x, y = bottom
+                    distance = self.estimate_distance(x, y)
+                    duck["distance"] = round(distance, 2) if isinstance(distance, (float, int)) and math.isfinite(distance) and distance > 0 else "unreachable"
+                    self.get_logger().info(f"[DEBUG] duck: bottom=({x},{y}), distance={duck['distance']}")
+                else:
+                    duck["distance"] = "unknown"
             else:
-                obj["distance"] = round(distance, 2)  # 소수점 제한 (예: 1.23)
+                duck["distance"] = "unknown"
 
         return desc
+
 
 
     def request_decision(self, full_description, velocity_note):
@@ -214,7 +243,9 @@ class GPTImageRobotController(Node):
             temperature=0.2,
             top_p=0.2
         )
-        return response.choices[0].message.content.strip().lower()
+        decision = response.choices[0].message.content.strip().lower()
+        self.get_logger().info(f"[DECISION] {decision}")
+        return decision
 
     def request_direction(self, full_description):
         response = openai.chat.completions.create(
@@ -249,7 +280,9 @@ class GPTImageRobotController(Node):
             temperature=0.3,
             top_p=0.3
         )
-        return response.choices[0].message.content.strip().lower()
+        direction = response.choices[0].message.content.strip().lower()
+        self.get_logger().info(f"[DIRECTION] {direction}")
+        return direction
 
     def main_process(self):
         try:
@@ -260,7 +293,7 @@ class GPTImageRobotController(Node):
                 return
 
             image_data = self.image_to_base64(image_path)
-            description_str = self.request_gpt_description(image_data)
+            description_str = self.request_gpt_description(image_data, image_path)
             desc_json, hsv_dict = self.parse_description(description_str)
             image_cv = self.base64_to_cv2(image_data)
             updated_desc = self.calculate_object_distances(desc_json, hsv_dict, image_cv)
