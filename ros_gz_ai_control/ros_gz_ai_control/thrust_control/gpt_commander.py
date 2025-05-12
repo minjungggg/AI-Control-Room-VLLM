@@ -41,7 +41,6 @@ class GPTImageRobotController(Node):
             self.get_logger().debug("Currently processing, ignore new analysis requests")
             return
 
-        # 🔒 thrust_is_busy
         if self.thrust_is_busy:
             self.get_logger().info("THE ROBOT IS IN BUSY STATE, SO DO NOT RUN ANALYZE_IMAGE.")
             return
@@ -51,7 +50,7 @@ class GPTImageRobotController(Node):
 
     def get_latest_image_path(self):
         image_dir = os.path.expanduser('~/saved_images')
-        pattern = re.compile(r'bgra8_saved_image_(\d+)\.png')
+        pattern = re.compile(r'saved_image_(\d+)\.png')
 
         try:
             files = os.listdir(image_dir)
@@ -74,58 +73,50 @@ class GPTImageRobotController(Node):
     def image_to_base64(self, image_path):
         with open(image_path, "rb") as img_file:
             return base64.b64encode(img_file.read()).decode('utf-8')
-    
-    def base64_to_cv2(self, base64_str):
-        img_bytes = base64.b64decode(base64_str)
-        np_arr = np.frombuffer(img_bytes, np.uint8)
-        img = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
-        return img
 
     def request_gpt_description(self, image_data, image_path):
         self.get_logger().info(f"*****************************{image_path}*****************************")
-        velocity_note = f"Current velocity: {self.latest_velocity_data}" if self.latest_velocity_data else "Velocity data not available."
         response = openai.chat.completions.create(
             model="gpt-4o",
-                messages=[
-                    {
-                        "role": "system",
-                        "content": (
-                            "You are acting as a judge for the water drone control system on the voyage. "
-                            "The water drone is twin-hull (catamaran-style). The gray objects at the bottom center of the image are engines, attached to both sides of the drone—not obstacles. "
-                            "The drone's horizontal width is 2.5m, length is 5m, and height is 1.5m. "
-                            "The camera is mounted 0.85 meters from the front of the drone and 1.1m above the water surface. "
-                            "All other visible objects (e.g., buoys, ducks, barrages) should be analyzed for position and color. And defines HSV color ranges for each object color found in the image."
-                            "Respond ONLY with a single JSON block with the following structure:"
-                            "\n\n"
-                            "{\n"
-                            "  \"description\": {\n"
-                            "    \"obstacles\": [\n"
-                            "      {\"name\": \"red buoy\", \"position\": \"front\", \"color\": \"red\"},\n"
-                            "      {\"name\": \"black buoy\", \"position\": \"left\", \"color\": \"black\"}\n"
-                            "    ],\n"
-                            "    \"duck\": {\"found\": true, \"position\": \"front-right\", \"color\": \"yellow\"}\n"
-                            "  },\n"
-                            "  \"color_hsv_dict\": {\n"
-                            "    \"red\": [[0, 100, 100], [10, 255, 255]],\n"
-                            "    \"black\": [[0, 0, 0], [180, 255, 50]],\n"
-                            "    \"yellow\": [[20, 100, 100], [35, 255, 255]]\n"
-                            "  }\n"
-                            "}"
-                        )
-                    },
-                    {
-                        "role": "user",
-                        "content": [
-                            {"type": "image_url", "image_url": {"url": "data:image/png;base64," + image_data}},
-                            {"type": "text", "text": "Please analyze the image and return the JSON as instructed."}
-                        ]
-                    }
+            messages=[
+                {
+                    "role": "system",
+                    "content": (
+                        "You are acting as a judge for the water drone control system on the voyage. "
+                        "The water drone is twin-hull (catamaran-style). The gray objects at the bottom center of the image are engines, attached to both sides of the drone—not obstacles. "
+                        "The drone's horizontal width is 2.5m, length is 5m, and height is 1.5m. "
+                        "The camera is mounted 0.85 meters from the front of the drone and 1.1m above the water surface. "
+                        "if the object is not found, set the value to unknown."
+                        "The image was taken with a camera attached to the drone, so if the object is far from the drone, it looks small. "
+                        "All other visible objects (e.g., buoys, ducks, barrages) should be analyzed for position, color and distance. "
+                        "Respond ONLY with a single JSON block with the following structure:"
+                        "\n\n"
+                        "{\n"
+                        "  \"description\": {\n"
+                        "    \"obstacles\": [\n"
+                        "      {\"name\": \"red buoy\", \"position\": \"front\", \"distance\": 5m },\n"
+                        "      {\"name\": \"black buoy\", \"position\": \"left\", \"distance\": 10m }\n"
+                        "    ],\n"
+                        "    \"duck\": {\"found\": true, \"position\": \"front-right\", \"distance\": \"unknown\" }\n"
+                        "  }\n"
+                        "}"
+                    )
+                },
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "image_url", "image_url": {"url": "data:image/png;base64," + image_data}},
+                        {"type": "text", "text": "The two images are the same image, but only the encoding method was different. It is provided to make it easier to distinguish objects. Based on this, please release the image and return the JSON as instructed."}
+                    ]
+                }
                 ],
-                max_tokens=400,
-                temperature=0.2,
-                top_p=0.2
-            )
-        return response.choices[0].message.content.strip()
+            max_tokens=400,
+            temperature=0.8,
+            top_p=0.4
+        )
+        description = response.choices[0].message.content.strip()
+        self.get_logger().info(f"[DESCRIPTION] {description}")
+        return description
 
     def parse_description(self, description_str):
         if description_str.startswith("```"):
@@ -133,84 +124,7 @@ class GPTImageRobotController(Node):
             description_str = re.sub(r"```", "", description_str).strip()
         parsed = json.loads(description_str)
         desc = parsed["description"]
-        hsv_dict = {k: (tuple(v[0]), tuple(v[1])) for k, v in parsed["color_hsv_dict"].items()}
-        self.get_logger().info(f"[DESCRIPTION]\n{desc}")
-        self.get_logger().info(f"[HSV Dictionary]\n{hsv_dict}")
-        return desc, hsv_dict
-
-    def find_bottom_pixel(self, image, lower_hsv, upper_hsv):
-        hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
-        mask = cv2.inRange(hsv, lower_hsv, upper_hsv)
-        contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-        if not contours:
-            return None
-        largest = max(contours, key=cv2.contourArea)
-        return tuple(largest[largest[:, :, 1].argmax()][0])  # (x, y)
-
-    def estimate_distance(self, x, y, width=1920, height=1080, hfov=90.0, vfov=60.0, camera_height=1.1):
-        center_x = width / 2
-        center_y = height / 2
-
-        # 각도를 라디안 단위로 변환
-        hfov_rad = math.radians(hfov)
-        vfov_rad = math.radians(vfov)
-
-        # 화면 중심 기준으로 x, y 각도 계산
-        theta_x = hfov_rad * ((x - center_x) / width)
-        theta_y = vfov_rad * ((y - center_y) / height)
-
-        # 수직 각도가 너무 작으면 계산 불가 (기울기 무한)
-        if abs(theta_y) < 1e-3:
-            return None
-
-        # 수직 거리 (z축 기준)
-        z = camera_height / math.tan(theta_y)
-
-        # 수평 보정된 직선 거리
-        distance = z / math.cos(theta_x)
-
-        return round(distance, 2) if distance > 0 and math.isfinite(distance) else "unreachable"
-
-
-    def calculate_object_distances(self, desc, hsv_dict, image):
-        obstacles = desc.get("obstacles", [])
-        duck = desc.get("duck") if isinstance(desc.get("duck"), dict) else None
-
-        # 거리 계산 대상: buoy + barrage
-        for obj in obstacles:
-            color = obj.get("color", "").lower()
-            if color not in hsv_dict:
-                obj["distance"] = "unknown"
-                continue
-
-            bottom = self.find_bottom_pixel(image, *hsv_dict[color])
-            if bottom is None:
-                obj["distance"] = "unknown"
-                continue
-
-            x, y = bottom
-            distance = self.estimate_distance(x, y)
-            obj["distance"] = round(distance, 2) if isinstance(distance, (float, int)) and math.isfinite(distance) and distance > 0 else "unreachable"
-            self.get_logger().info(f"[DEBUG] {obj['name']}: bottom=({x},{y}), distance={obj['distance']}")
-
-        # duck은 따로 처리해서 덮어쓰기
-        if duck:
-            color = duck.get("color", "").lower()
-            if color in hsv_dict:
-                bottom = self.find_bottom_pixel(image, *hsv_dict[color])
-                if bottom:
-                    x, y = bottom
-                    distance = self.estimate_distance(x, y)
-                    duck["distance"] = round(distance, 2) if isinstance(distance, (float, int)) and math.isfinite(distance) and distance > 0 else "unreachable"
-                    self.get_logger().info(f"[DEBUG] duck: bottom=({x},{y}), distance={duck['distance']}")
-                else:
-                    duck["distance"] = "unknown"
-            else:
-                duck["distance"] = "unknown"
-
         return desc
-
-
 
     def request_decision(self, full_description, velocity_note):
         response = openai.chat.completions.create(
@@ -257,11 +171,11 @@ class GPTImageRobotController(Node):
                         "You are the system for determining the direction of a sailing drone. Respond with ONLY ONE of: 'w', 'a', 's', or 'd'."
                         "The water drone is twin-hull (catamaran-style)."
                         "Use the following rules to decide:"
-                        "- If there is an obstacle **in front** within **0.8m or closer**, respond with 's' to move backward."
-                        "- If there is an obstacle on the **left or right** within **0.5m or closer**, respond with 's' to move backward."
+                        "- If there is an obstacle in front within 0.8m or closer, respond with 's' to move backward."
+                        "- If there is an obstacle on the left or right within 0.5m or closer, respond with 's' to move backward."
                         "- If no such threat exists, but obstacles are detected, steer ('a' or 'd') based on the safer direction."
-                        "- If no obstacles are close, and the duck has **not been found**, move forward ('w') to search."
-                        "- If duck is found and it is **not centered**, adjust direction ('a' or 'd') to center it."
+                        "- If no obstacles are close, and the duck has not been found, move to closer or find duck by rotating"
+                        "- If duck is found and it is not centered, adjust direction ('a' or 'd') to center it."
                         "- Respond with exactly one of: 'w', 'a', 's', 'd'. Do not explain."
                     )
 
@@ -270,8 +184,8 @@ class GPTImageRobotController(Node):
                 {
                     "role": "user",
                     "content": (
-                        "I want to find a yellow duck, and place it close between the grey drone engines shown in the picture."
-                        "If there is no 'duck' in the description, let's move to avoid obstacles based on the description so we can find the duck."
+                        "I want to move the yellow duck between the grey drone engines shown in the picture to the center, bottom of the picture."
+                        "If the 'found' of 'duck' is 'false' in the description, let's avoid obstacles and look for ducks."
                         "If there is no risk of hitting an obstacle, it is recommended that move closer to the obstacle "
                     )
                 }
@@ -287,28 +201,24 @@ class GPTImageRobotController(Node):
     def main_process(self):
         try:
             image_path = self.get_latest_image_path()
-            if not image_path:
-                self.get_logger().warn("No image found.")
+            if not image_path or not os.path.exists(image_path):
+                self.get_logger().warn("Required image file not found.")
                 self.processing = False
                 return
 
             image_data = self.image_to_base64(image_path)
             description_str = self.request_gpt_description(image_data, image_path)
-            desc_json, hsv_dict = self.parse_description(description_str)
-            image_cv = self.base64_to_cv2(image_data)
-            updated_desc = self.calculate_object_distances(desc_json, hsv_dict, image_cv)
+            desc_json = self.parse_description(description_str)
+            desc_str = json.dumps(desc_json)
 
-            self.get_logger().info(f"[UPDATED DESCRIPTION]\n{json.dumps(updated_desc, indent=2)}")
-
-            updated_desc_str = json.dumps(updated_desc, indent=2)
-            decision = self.request_decision(updated_desc_str, self.latest_velocity_data or "")
+            decision = self.request_decision(desc_str, self.latest_velocity_data or "")
             if decision == "stop":
                 self.stop_pub.publish(String(data="stop"))
                 rclpy.shutdown()
                 return
             elif decision == "move":
                 self.move_pub.publish(String(data="move"))
-                direction = self.request_direction(updated_desc_str)
+                direction = self.request_direction(desc_str)
                 if direction in ['w', 'a', 's', 'd']:
                     self.direction_pub.publish(String(data=direction))
 
@@ -317,7 +227,6 @@ class GPTImageRobotController(Node):
 
         finally:
             self.processing = False
-
 
 def main(args=None):
     rclpy.init(args=args)
