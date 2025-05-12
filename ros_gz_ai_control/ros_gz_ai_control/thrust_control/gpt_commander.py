@@ -74,45 +74,81 @@ class GPTImageRobotController(Node):
         with open(image_path, "rb") as img_file:
             return base64.b64encode(img_file.read()).decode('utf-8')
 
-    def request_gpt_description(self, image_data, image_path):
+    @staticmethod
+    def estimate_corrected_distance(x, y, image_width, image_height, fov_h=90.0, fov_v=60.0, camera_height=1.1):
+        # 수직 각도 (theta): 화면 중앙 기준
+        y_offset = y - (image_height / 2)
+        theta_deg = (y_offset / (image_height / 2)) * (fov_v / 2)
+        theta_rad = math.radians(theta_deg)
+
+        # 수평 각도 (phi): 화면 중앙 기준
+        x_offset = x - (image_width / 2)
+        phi_deg = (x_offset / (image_width / 2)) * (fov_h / 2)
+        phi_rad = math.radians(phi_deg)
+
+        # 거리 계산
+        if abs(math.tan(theta_rad)) < 1e-6:
+            return float('inf')  # 혹은 999.0, max distance 등 처리
+
+        depth_z = camera_height / math.tan(theta_rad)
+        corrected_distance = depth_z / math.cos(phi_rad)
+
+        return round(corrected_distance, 2)
+
+
+    
+    def request_gpt_description(self, image_data, image_path, contour_json):
         self.get_logger().info(f"*****************************{image_path}*****************************")
         response = openai.chat.completions.create(
             model="gpt-4o",
             messages=[
-                {
-                    "role": "system",
-                    "content": (
-                        "You are acting as a judge for the water drone control system on the voyage. "
-                        "The water drone is twin-hull (catamaran-style). The gray objects at the bottom center of the image are engines, attached to both sides of the drone—not obstacles. "
-                        "The drone's horizontal width is 2.5m, length is 5m, and height is 1.5m. "
-                        "The camera is mounted 0.85 meters from the front of the drone and 1.1m above the water surface. "
-                        "if the object is not found, set the value to unknown."
-                        "The image was taken with a camera attached to the drone, so if the object is far from the drone, it looks small. "
-                        "All other visible objects (e.g., buoys, ducks, barrages) should be analyzed for position, color and distance. "
-                        "Respond ONLY with a single JSON block with the following structure:"
-                        "\n\n"
-                        "{\n"
-                        "  \"description\": {\n"
-                        "    \"obstacles\": [\n"
-                        "      {\"name\": \"red buoy\", \"position\": \"front\", \"distance\": 5m },\n"
-                        "      {\"name\": \"black buoy\", \"position\": \"left\", \"distance\": 10m }\n"
-                        "    ],\n"
-                        "    \"duck\": {\"found\": true, \"position\": \"front-right\", \"distance\": \"unknown\" }\n"
-                        "  }\n"
-                        "}"
-                    )
-                },
-                {
-                    "role": "user",
-                    "content": [
-                        {"type": "image_url", "image_url": {"url": "data:image/png;base64," + image_data}},
-                        {"type": "text", "text": "The two images are the same image, but only the encoding method was different. It is provided to make it easier to distinguish objects. Based on this, please release the image and return the JSON as instructed."}
-                    ]
-                }
+                    {
+                        "role": "system",
+                        "content": (
+                            "You are acting as a reasoning engine for a water drone control system. "
+                            "The drone is twin-hull (catamaran-style). The gray objects at the bottom center of the image are engines attached to both sides of the drone—do not classify them as obstacles. "
+                            "The drone is 2.5m wide, 5m long, and 1.5m high. The camera is mounted 0.85 meters from the front and 1.1 meters above the water surface. "
+                            "All visible objects (e.g., buoys, ducks, barrages) should be identified with name, position, and estimated distance. "
+                            "You are given additional image contour analysis, which includes: "
+                            "- id: unique contour identifier\n"
+                            "- bottom_pixel: pixel coordinate where object touches water\n"
+                            "- distance_m: estimated distance in meters\n"
+                            "- area: size of the contour in pixels\n"
+                            "- aspect_ratio: height divided by width\n\n"
+                            "Use this data to infer what each object might be. Match contour characteristics with what is seen in the image. "
+                            "DO NOT include the contour_analysis block in your output. Instead, convert it into a structured JSON like the example below.\n"
+                            "Respond ONLY with a single JSON block in this structure:\n\n"
+                            "{\n"
+                            "  \"description\": {\n"
+                            "    \"obstacles\": [\n"
+                            "      {\"name\": \"red buoy\", \"position\": \"front\", \"distance\": 5 },\n"
+                            "      {\"name\": \"black buoy\", \"position\": \"left\", \"distance\": 10 }\n"
+                            "    ],\n"
+                            "    \"duck\": {\"found\": true, \"position\": \"front-right\", \"distance\": \"unknown\" }\n"
+                            "  }\n"
+                            "}"
+                        )
+                    },
+                    {
+                        "role": "user",
+                        "content": [
+                            {"type": "image_url", "image_url": {"url": "data:image/png;base64," + image_data}},
+                            {
+                                "type": "text",
+                                "text": (
+                                    "The image below shows water obstacles captured by the drone. "
+                                    "Here is additional analysis from image contours with their id, bottom pixel, distance, area, and aspect ratio:\n"
+                                    f"{contour_json}\n\n"
+                                    "Using this information, infer what each object might represent and construct the final JSON response accordingly. "
+                                    "Do not include the original contour list in your response."
+                                )
+                            }
+                        ]
+                    }
                 ],
             max_tokens=400,
             temperature=0.8,
-            top_p=0.4
+            top_p=0.6
         )
         description = response.choices[0].message.content.strip()
         self.get_logger().info(f"[DESCRIPTION] {description}")
@@ -154,7 +190,6 @@ class GPTImageRobotController(Node):
                 }
             ],
             max_tokens=10,
-            temperature=0.2,
             top_p=0.2
         )
         decision = response.choices[0].message.content.strip().lower()
@@ -191,7 +226,6 @@ class GPTImageRobotController(Node):
                 }
             ],
             max_tokens=10,
-            temperature=0.3,
             top_p=0.3
         )
         direction = response.choices[0].message.content.strip().lower()
@@ -207,7 +241,35 @@ class GPTImageRobotController(Node):
                 return
 
             image_data = self.image_to_base64(image_path)
-            description_str = self.request_gpt_description(image_data, image_path)
+            image = cv2.imread(image_path)
+            gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+            blurred = cv2.GaussianBlur(gray, (5, 5), 0)
+            edges = cv2.Canny(blurred, 50, 150)
+            contours, _ = cv2.findContours(edges.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+            image_height, image_width = gray.shape
+            valid_contours = [c for c in contours if 60 <= cv2.contourArea(c) <= 600]
+
+            contour_summary = []
+            for idx, contour in enumerate(valid_contours):
+                area = cv2.contourArea(contour)
+                x, y, w, h = cv2.boundingRect(contour)
+                aspect_ratio = round(h / w, 2) if w != 0 else 0
+                bottom = max(contour, key=lambda p: p[0][1])[0]
+                x_b, y_b = bottom
+                distance = self.estimate_corrected_distance(x_b, y_b, image_width, image_height)
+                
+                contour_summary.append({
+                    "id": idx + 1,
+                    "bottom_pixel": [int(x_b), int(y_b)],
+                    "distance_m": distance,
+                    "area": round(area, 1),
+                    "aspect_ratio": aspect_ratio
+                })
+
+            contour_json = json.dumps({"contour_analysis": contour_summary}, indent=2)
+            self.get_logger().info(f"[CONTOUR JSON] {contour_json}")
+            description_str = self.request_gpt_description(image_data, image_path, contour_json)
             desc_json = self.parse_description(description_str)
             desc_str = json.dumps(desc_json)
 
