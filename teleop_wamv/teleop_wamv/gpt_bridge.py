@@ -22,25 +22,39 @@ class GPTBridge(Node):
     def listener_callback(self, msg):
         try:
             description_json = msg.data
-            self.get_logger().info(f'GPT에게 JSON 설명 전달 중: {description_json}')
             response = openai.chat.completions.create(
                 model="gpt-4o",
                 messages=[
                     {
                         "role": "system",
                         "content": (
-                            "당신은 자율 수상 드론을 제어하는 명령 결정기입니다. "
-                            "입력은 JSON 포맷이며, 고무오리(target)와 장애물(obstacle)의 거리(m) 및 방향(deg)이 포함됩니다. "
-                            "드론은 고무오리까지 도달해야 하며, 장애물과는 1m 이상 떨어져야 합니다. "
-                            "출력은 반드시 다음 네 가지 중 하나의 단어로만 하세요: forward, left, right, stop. "
+                            "You are the navigation decision AI for an autonomous surface drone (WAM-V). "
+                            "The input is object information analyzed from the front-facing camera, provided in JSON format. "
+                            "This JSON lists all major objects in front of the drone, and each object includes the following attributes: "
+                            "type (either obstacle or rubber_duck), color, angle (in degrees), and distance. "
+                            "The drone considers the rubber_duck (yellow rubber duck) as the target, and must approach it **without collision** and stop upon reaching it. "
+                            "   - If the rubber_duck is not present in the image: move the drone either left or right to make the rubber_duck appear in the image. "
+                            "     Always issue a direction different from the previous one during search mode. "
+                            "   - If the rubber_duck is present in the image: prioritize avoiding obstacles while approaching the rubber_duck. "
+                            "       - If the rubber_duck has a positive angle: output right. "
+                            "       - If the rubber_duck has a negative angle: output left. "
+                            "Objects of type 'obstacle' are hazards that must not be collided with. "
+                            "The angle is measured with 0 degrees at the front of the drone, negative to the left, and positive to the right. "
+                            "If the distance to an obstacle is 5 or less, consider evasive action; if the distance is 3 or less, you must issue left or right to avoid it. "
+                            "If the distance to the rubber_duck is 3 or less, output stop and do not issue any further commands. "
+                            "The drone must make navigation decisions to reach the target without touching obstacles. "
+                            "The output command must be one of the following words, without punctuation: forward, left, right, stop."
                         )
+
+
+
                     },
                     {
                         "role": "user",
-                        "content": f"설명: {description_json}\n이 정보를 바탕으로 드론이 다른 물체와 충돌하기 않고 고무오리까지 도달하려면 어떤 방향으로 이동해야 하나요?"
+                        "content": f"Input: {description_json}\nTo reach the target above while avoiding obstacles, choose the most appropriate direction in a single word. The output must be one of: forward, left, right, stop."
                     }
                 ],
-                max_tokens=100
+                max_tokens=7
             )
             command_json = response.choices[0].message.content.strip()
             self.publisher.publish(String(data=command_json))
@@ -49,7 +63,7 @@ class GPTBridge(Node):
             # 다음 이미지 저장 트리거 발행
             self.trigger_pub.publish(String(data='next'))
             self.get_logger().info('[trigger] 다음 이미지 저장 요청 전송됨')
-            
+
         except Exception as e:
             self.get_logger().error(f'GPT 요청 중 오류 발생: {e}')
 

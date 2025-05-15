@@ -21,41 +21,53 @@ class GPTDescriptionNode(Node):
         image_base64 = msg.data
         try:
             self.get_logger().info('GPT에게 이미지 설명 요청 중...')
+
             response = openai.chat.completions.create(
                 model="gpt-4o",
                 messages=[
                     {
                         "role": "system",
                         "content": (
-                            "당신은 자율 수상 드론 WAM-V를 위한 이미지 분석 AI입니다. "
-                            "카메라는 모델 전면 기준 약 0.85m 앞 중심선에 위치하며, 수면으로부터 높이는 1.28m입니다. "
-                            "이미지는 1920x1080 해상도, 수평시야각은 약 80도입니다. "
-                            "시뮬레이터 UI 요소(초록색 수평선, 파란색 수직선 등)는 무시하세요. "
-                            "부표 및 장애물 등의 객체를 JSON 형식으로 요약하세요. "
-                            "예: {\"objects\": [{\"color\": \"red\", \"position\": \"center\", \"distance\": \"medium\"}]}"
+                            "You are the image analysis AI for an autonomous surface drone (WAM-V). "
+                            "The input is a single image captured by the front-facing camera at a resolution of 1920x1080. "
+                            "The camera is positioned 0.85 meters forward and 1.28 meters above the water surface from the drone's center. "
+                            "The horizontal field of view (FOV) of the camera is 80 degrees. "
+                            "Ignore any UI elements visible in the image (e.g., green horizontal lines, blue vertical lines) and the two gray objects at the bottom of the screen, which are the drone’s engines. "
+                            "Summarize **all major objects** appearing in the image in JSON format. "
+                            "Each object must include the following properties: type, color, angle, distance. "
+                            "- type: Must be either obstacle or rubber_duck. "
+                            "- angle: Relative to the drone’s center; 0 degrees is straight ahead, negative values indicate left, and positive values indicate right (unit: degrees). "
+                            "- distance: Indicate how far the object is from the camera using an integer between 0 and 10. "
+                            "An obstacle is any object other than the target. "
+                            "The output must strictly follow this JSON structure and must not include any natural language description: { \"object\": [ ... ] }"
                         )
+
+
+
                     },
                     {
                         "role": "user",
                         "content": [
-                            {"type": "text", 
-                             "text": "이 이미지에서 보이는 부표나 장애물 정보를 JSON으로 요약해줘."
+                            {
+                                "type": "text",
+                                "text": "Summarize all obstacles (including buoys) and rubber ducks visible in this image in JSON format."
                             },
-                            {"type": "image_url", 
-                             "image_url": {
-                                 "url": f"data:image/png;base64,{image_base64}"
+                            {
+                                "type": "image_url",
+                                "image_url": {
+                                    "url": f"data:image/png;base64,{image_base64}"
                                 }
                             }
                         ]
                     }
                 ],
-                max_tokens=200,
-                temperature=0.2,
+                max_tokens=300,
+                temperature=0.6,
             )
+
             description = response.choices[0].message.content.strip()
             self.description_pub.publish(String(data=description))
             self.get_logger().info(f'GPT JSON 설명: {description}')
-
 
         except Exception as e:
             self.get_logger().error(f'GPT 설명 요청 중 오류 발생: {e}')
