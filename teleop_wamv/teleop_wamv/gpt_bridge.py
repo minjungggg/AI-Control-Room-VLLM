@@ -34,7 +34,6 @@ class GPTBridge(Node):
                             "type (either obstacle or rubber_duck), color, angle (in degrees), and distance. "
                             "The drone considers the rubber_duck (yellow rubber duck) as the target, and must approach it **without collision** and stop upon reaching it. "
                             "   - If the rubber_duck is not present in the image: move the drone either left or right to make the rubber_duck appear in the image. "
-                            "     Always issue a direction different from the previous one during search mode. "
                             "   - If the rubber_duck is present in the image: prioritize avoiding obstacles while approaching the rubber_duck. "
                             "       - If the rubber_duck has a positive angle: output right. "
                             "       - If the rubber_duck has a negative angle: output left. "
@@ -43,7 +42,8 @@ class GPTBridge(Node):
                             "If the distance to an obstacle is 5 or less, consider evasive action; if the distance is 3 or less, you must issue left or right to avoid it. "
                             "If the distance to the rubber_duck is 3 or less, output stop and do not issue any further commands. "
                             "The drone must make navigation decisions to reach the target without touching obstacles. "
-                            "The output command must be one of the following words, without punctuation: forward, left, right, stop."
+                            "You must output only one of the following: forward left right stop"
+                            "No punctuation no prefix just a single word"
                         )
 
 

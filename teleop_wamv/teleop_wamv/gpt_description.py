@@ -37,7 +37,10 @@ class GPTDescriptionNode(Node):
                             "Each object must include the following properties: type, color, angle, distance. "
                             "- type: Must be either obstacle or rubber_duck. "
                             "- angle: Relative to the drone’s center; 0 degrees is straight ahead, negative values indicate left, and positive values indicate right (unit: degrees). "
-                            "- distance: Indicate how far the object is from the camera using an integer between 0 and 10. "
+                            "- distance: Estimate the distance from the drone to the object using an integer between 0 and 10. "
+                            "The value should be based solely on how far the object is from the drone, not on the distance between multiple objects."
+                            "A larger object appearing low in the image is closer (e.g., 0–3), while a smaller object higher in the image is farther (e.g., 7–10)."
+                            "The distance scale must be applied consistently across all images and must reflect the physical distance from the drone to each object, not their spacing. "
                             "An obstacle is any object other than the target. "
                             "The output must strictly follow this JSON structure and must not include any natural language description: { \"object\": [ ... ] }"
                         )
