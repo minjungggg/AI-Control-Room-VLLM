@@ -17,7 +17,6 @@ class GPTImageRobotController(Node):
 
         openai.api_key = os.getenv("GPT_API_KEY")
 
-        self.move_pub = self.create_publisher(String, 'move_robot', 10)
         self.direction_pub = self.create_publisher(String, 'move_direction', 10)
         self.stop_pub = self.create_publisher(String, 'stop_robot', 10)
         self.thrust_busy_sub = self.create_subscription(Bool, 'thrust_busy', self.thrust_busy_callback, 10)
@@ -76,25 +75,24 @@ class GPTImageRobotController(Node):
 
     @staticmethod
     def estimate_corrected_distance(x, y, image_width, image_height, fov_h=90.0, fov_v=60.0, camera_height=1.1):
-        # 수직 각도 (theta): 화면 중앙 기준
+        # 수직 각도 (θ)
         y_offset = y - (image_height / 2)
         theta_deg = (y_offset / (image_height / 2)) * (fov_v / 2)
         theta_rad = math.radians(theta_deg)
 
-        # 수평 각도 (phi): 화면 중앙 기준
+        # 수평 각도 (φ)
         x_offset = x - (image_width / 2)
         phi_deg = (x_offset / (image_width / 2)) * (fov_h / 2)
         phi_rad = math.radians(phi_deg)
 
         # 거리 계산
         if abs(math.tan(theta_rad)) < 1e-6:
-            return float('inf')  # 혹은 999.0, max distance 등 처리
+            distance = float('inf')
+        else:
+            depth_z = camera_height / math.tan(theta_rad)
+            distance = depth_z / math.cos(phi_rad)
 
-        depth_z = camera_height / math.tan(theta_rad)
-        corrected_distance = depth_z / math.cos(phi_rad)
-
-        return round(corrected_distance, 2)
-
+        return round(distance, 2), round(phi_deg, 2)
 
     
     def request_gpt_description(self, image_data, image_path, contour_json):
@@ -121,8 +119,8 @@ class GPTImageRobotController(Node):
                             "{\n"
                             "  \"description\": {\n"
                             "    \"obstacles\": [\n"
-                            "      {\"name\": \"red buoy\", \"position\": \"front\", \"distance\": 5 },\n"
-                            "      {\"name\": \"black buoy\", \"position\": \"left\", \"distance\": 10 }\n"
+                            "      {\"name\": \"red buoy\", \"position\": \"left 15deg\", \"distance\": 5 },\n"
+                            "      {\"name\": \"black buoy\", \"position\": \"right 26deg\", \"distance\": 8 }\n"
                             "    ],\n"
                             "    \"duck\": {\"found\": true, \"position\": \"front-right\", \"distance\": \"unknown\" }\n"
                             "  }\n"
@@ -137,7 +135,7 @@ class GPTImageRobotController(Node):
                                 "type": "text",
                                 "text": (
                                     "The image below shows water obstacles captured by the drone. "
-                                    "Here is additional analysis from image contours with their id, bottom pixel, distance, area, and aspect ratio:\n"
+                                    "Here is additional analysis from image contours with their id, bottom pixel, distance, area, and horizontal_angle:\n"
                                     f"{contour_json}\n\n"
                                     "Using this information, infer what each object might represent and construct the final JSON response accordingly. "
                                     "Do not include the original contour list in your response."
@@ -184,7 +182,7 @@ class GPTImageRobotController(Node):
                 {
                     "role": "user",
                     "content": (
-                        "I want to find a yellow duck, and place it close between the grey drone engines shown in the picture."
+                        "I want to find a yellow duck, and place it close front of drone engines."
                         "If you haven't found a yellow duck, print out a 'move' command to move and look for a yellow duck on the move."
                     )
                 }
@@ -196,41 +194,83 @@ class GPTImageRobotController(Node):
         self.get_logger().info(f"[DECISION] {decision}")
         return decision
 
-    def request_direction(self, full_description):
+    def request_multiple_directions(self, full_description, n=3):
+        directions = []
+
+        for i in range(n):
+            response = openai.chat.completions.create(
+                model="gpt-4o",
+                messages=[
+                    {
+                        "role": "system",
+                        "content": (
+                            "You are the system for determining the direction of a sailing drone. Respond with ONLY ONE of: 'w', 'a', 's', or 'd'."
+                            "The water drone is twin-hull (catamaran-style)."
+                            "Use the following rules to decide:"
+                            "- 'w' to move forward, 'a' to turn left, 'd' to turn right, and 's' to move backward."
+                            "- If there is an obstacle in front within 0.8m or closer, respond with 's' to move backward."
+                            "- If there is an obstacle on the left or right within 0.5m or closer, respond with 's'."
+                            "- If no such threat exists, but obstacles are detected, steer ('a' or 'd') based on the safer direction."
+                            "- If no obstacles are close and the duck has not been found, move to search."
+                            "- If duck is found and off-centered, adjust with 'a' or 'd'."
+                            "- Respond with exactly one of: 'w', 'a', 's', or 'd'. Do not explain."
+                        )
+                    },
+                    {"role": "assistant", "content": full_description},
+                    {
+                        "role": "user",
+                        "content": (
+                            "I want to find a yellow duck, and place it close front of drone engines."
+                            "If 'duck' is not found, try to avoid obstacles and rotate to look for it."
+                        )
+                    }
+                ],
+                max_tokens=10,
+                temperature=0.7,  # 다양성 확보
+                top_p=0.9
+            )
+            direction = response.choices[0].message.content.strip().lower()
+            directions.append(direction)
+
+        return directions
+
+    def request_direction_evaluation(self, full_description, directions):
+        # 여러 방향 정리
+        direction_lines = "\n".join([f"{i+1}. '{d}'" for i, d in enumerate(directions)])
+
+        compare_prompt = (
+            f"The following navigation decisions were made by the system based on the same description:\n\n"
+            f"{full_description}\n\n"
+            f"Here are the direction outputs:\n{direction_lines}\n\n"
+            f"Evaluate them and choose the best direction.\n"
+            f"Respond with ONLY ONE of: 'w', 'a', 's', or 'd'.\n"
+            f"Do not explain. Just respond with the final choice."
+        )
+
         response = openai.chat.completions.create(
             model="gpt-4o",
             messages=[
-                {
-                    "role": "system",
-                    "content": (
-                        "You are the system for determining the direction of a sailing drone. Respond with ONLY ONE of: 'w', 'a', 's', or 'd'."
-                        "The water drone is twin-hull (catamaran-style)."
-                        "Use the following rules to decide:"
-                        "- If there is an obstacle in front within 0.8m or closer, respond with 's' to move backward."
-                        "- If there is an obstacle on the left or right within 0.5m or closer, respond with 's' to move backward."
-                        "- If no such threat exists, but obstacles are detected, steer ('a' or 'd') based on the safer direction."
-                        "- If no obstacles are close, and the duck has not been found, move to closer or find duck by rotating"
-                        "- If duck is found and it is not centered, adjust direction ('a' or 'd') to center it."
-                        "- Respond with exactly one of: 'w', 'a', 's', 'd'. Do not explain."
-                    )
-
-                },
-                {"role": "assistant", "content": full_description},
-                {
-                    "role": "user",
-                    "content": (
-                        "I want to move the yellow duck between the grey drone engines shown in the picture to the center, bottom of the picture."
-                        "If the 'found' of 'duck' is 'false' in the description, let's avoid obstacles and look for ducks."
-                        "If there is no risk of hitting an obstacle, it is recommended that move closer to the obstacle "
-                    )
-                }
+                {"role": "system", "content": "You are an evaluator choosing the best navigation direction for a sailing drone."
+                            "The water drone is twin-hull (catamaran-style)."
+                            "Use the following rules to decide:"
+                            "- 'w' to move forward, 'a' to turn left, 'd' to turn right, and 's' to move backward."
+                            "- If there is an obstacle in front within 0.8m or closer, respond with 's' to move backward."
+                            "- If there is an obstacle on the left or right within 0.5m or closer, respond with 's'."
+                            "- If no such threat exists, but obstacles are detected, steer ('a' or 'd') based on the safer direction."
+                            "- If no obstacles are close and the duck has not been found, move to search."
+                            "- If obstacles and duck are far from the drone (over than 10), move forward ('w')."
+                            "- If duck is found and off-centered, adjust with 'a' or 'd'."
+                            "- Respond with exactly one of: 'w', 'a', 's', or 'd'. Do not explain."},
+                {"role": "user", "content": compare_prompt}
             ],
-            max_tokens=10,
-            top_p=0.3
+            temperature=0.3,
+            max_tokens=5
         )
-        direction = response.choices[0].message.content.strip().lower()
-        self.get_logger().info(f"[DIRECTION] {direction}")
-        return direction
+
+        final_choice = response.choices[0].message.content.strip().lower()
+        self.get_logger().info(f"[FINAL CHOICE] {final_choice}")
+        return final_choice
+
 
     def main_process(self):
         try:
@@ -242,33 +282,61 @@ class GPTImageRobotController(Node):
 
             image_data = self.image_to_base64(image_path)
             image = cv2.imread(image_path)
-            gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-            blurred = cv2.GaussianBlur(gray, (5, 5), 0)
-            edges = cv2.Canny(blurred, 50, 150)
-            contours, _ = cv2.findContours(edges.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+            hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+            image_height, image_width = image.shape[:2]
 
-            image_height, image_width = gray.shape
-            valid_contours = [c for c in contours if 60 <= cv2.contourArea(c) <= 600]
+            # ✅ HSV color range for object detection
+            hsv_ranges = [
+                ((0, 50, 50), (10, 255, 255)),       # red1 
+                ((160, 50, 50), (180, 255, 255)),    # red2
+                ((20, 50, 50), (40, 255, 255)),      # yellow
+                ((0, 0, 0), (180, 255, 80)),         # black 
+                ((130, 30, 30), (160, 255, 255)),    # purple
+                ((35, 50, 50), (85, 255, 255)),      # green 
+            ]
 
+            masks = [cv2.inRange(hsv, lower, upper) for (lower, upper) in hsv_ranges]
+            general_color_mask = masks[0]
+            for m in masks[1:]:
+                general_color_mask = cv2.bitwise_or(general_color_mask, m)
+
+            # ✅ Masking (erase top-sky and bottom-engines)
+            top_ignore_y = int(image_height * 0.2)      
+            bottom_ignore_y = int(image_height * 0.9)   
+            cv2.rectangle(general_color_mask, (0, 0), (image_width, top_ignore_y), 0, -1)
+            cv2.rectangle(general_color_mask, (0, bottom_ignore_y), (image_width, image_height), 0, -1)
+
+            contours, _ = cv2.findContours(general_color_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+            # # ✅ Visulaization (for debugging)
+            # contour_vis = image.copy()
+            # cv2.drawContours(contour_vis, contours, -1, (0, 255, 255), 2)
+            # visualization_path = os.path.expanduser("~/saved_images/contour_visualization.png")
+            # cv2.imwrite(visualization_path, contour_vis)
+            # self.get_logger().info(f"[DEBUG] Contour visualization saved at: {visualization_path}")
+
+            # ✅ JSON 
             contour_summary = []
-            for idx, contour in enumerate(valid_contours):
+            for idx, contour in enumerate(contours):
                 area = cv2.contourArea(contour)
                 x, y, w, h = cv2.boundingRect(contour)
                 aspect_ratio = round(h / w, 2) if w != 0 else 0
                 bottom = max(contour, key=lambda p: p[0][1])[0]
                 x_b, y_b = bottom
-                distance = self.estimate_corrected_distance(x_b, y_b, image_width, image_height)
-                
+                distance, horizontal_angle = self.estimate_corrected_distance(x_b, y_b, image_width, image_height)
+
                 contour_summary.append({
                     "id": idx + 1,
                     "bottom_pixel": [int(x_b), int(y_b)],
                     "distance_m": distance,
+                    "horizontal_angle": horizontal_angle,
                     "area": round(area, 1),
                     "aspect_ratio": aspect_ratio
                 })
 
             contour_json = json.dumps({"contour_analysis": contour_summary}, indent=2)
-            self.get_logger().info(f"[CONTOUR JSON] {contour_json}")
+            # self.get_logger().info(f"[CONTOUR JSON] {contour_json}")
+
             description_str = self.request_gpt_description(image_data, image_path, contour_json)
             desc_json = self.parse_description(description_str)
             desc_str = json.dumps(desc_json)
@@ -279,10 +347,13 @@ class GPTImageRobotController(Node):
                 rclpy.shutdown()
                 return
             elif decision == "move":
-                self.move_pub.publish(String(data="move"))
-                direction = self.request_direction(desc_str)
+                directions = self.request_multiple_directions(desc_str, n=3)
+                direction = self.request_direction_evaluation(desc_str, directions)
                 if direction in ['w', 'a', 's', 'd']:
                     self.direction_pub.publish(String(data=direction))
+                else:
+                    self.get_logger().warn(f"[WARNING] Invalid direction received from evaluator: {direction}")
+
 
         except Exception as e:
             self.get_logger().error(f"[ERROR] {str(e)}")

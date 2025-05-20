@@ -14,14 +14,12 @@ class CumulativeDistanceNode(Node):
             self.pose_callback,
             10
         )
-
         self.clock_subscription = self.create_subscription(
             Clock,
             '/clock',
             self.clock_callback,
             10
         )
-
         self.prev_position = None
         self.total_distance = 0.0
         self.latest_sim_time_sec = 0

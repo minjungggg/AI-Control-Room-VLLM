@@ -65,6 +65,7 @@ class FastImageSaver(Node):
                 m1type=cv2.CV_16SC2
             )
             self.received_camera_info = True
+            # self.get_logger().info("CameraInfo received and undistort maps initialized.")
 
     def image_callback(self, msg: Image):
         self.counter += 1
@@ -76,35 +77,13 @@ class FastImageSaver(Node):
             return
 
         try:
-            # Load and undistort both images
-            cv_bgra = self.bridge.imgmsg_to_cv2(msg, desired_encoding='bgra8')
-            cv_mono = self.bridge.imgmsg_to_cv2(msg, desired_encoding='mono8')
+            cv_image = self.bridge.imgmsg_to_cv2(msg, desired_encoding='bgra8')
 
-            undistorted_bgra = cv2.remap(cv_bgra, self.map1, self.map2, interpolation=cv2.INTER_LINEAR)
-            undistorted_mono = cv2.remap(cv_mono, self.map1, self.map2, interpolation=cv2.INTER_LINEAR)
+            undistorted_image = cv2.remap(cv_image, self.map1, self.map2, interpolation=cv2.INTER_LINEAR)
 
-            # Convert mono8 to 3-channel BGR
-            mono_colored = cv2.cvtColor(undistorted_mono, cv2.COLOR_GRAY2BGR)
-            color_bgra = undistorted_bgra[:, :, :3]  # remove alpha channel
-
-            # Resize mono if needed
-            if mono_colored.shape != color_bgra.shape:
-                mono_colored = cv2.resize(mono_colored, (color_bgra.shape[1], color_bgra.shape[0]))
-
-            # # Apply gamma correction (gamma = 0.1)
-            # inv_gamma = 1.0 / 0.1
-            # gamma_table = np.array([((i / 255.0) ** inv_gamma) * 255 for i in range(256)]).astype("uint8")
-            # color_bgra = cv2.LUT(color_bgra, gamma_table)
-            # mono_colored = cv2.LUT(mono_colored, gamma_table)
-
-            # Blend 70% BGRA + 30% Mono8
-            blended = cv2.addWeighted(color_bgra, 0.7, mono_colored, 0.3, 0)
-
-            # Save blended result
             filename = os.path.join(self.image_save_path, f"saved_image_{self.image_index}.png")
-            cv2.imwrite(filename, blended)
-
-            self.get_logger().info(f"Saved_image: {filename}")
+            cv2.imwrite(filename, undistorted_image)
+            self.get_logger().info(f"Saved undistorted image with remap: {filename}")
             self.image_index += 1
 
         except Exception as e:

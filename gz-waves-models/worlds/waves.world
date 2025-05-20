@@ -39,7 +39,7 @@
     </include>
 
     <!-- ENU axes -->
-    <model name="axes">
+    <!-- <model name="axes">
       <static>1</static>
       <link name="link">
         <visual name="r">
@@ -88,7 +88,7 @@
           </material>
         </visual>
       </link>
-    </model>
+    </model> -->
 
     <include>
       <pose>25 0 0 0 0 1.51</pose>
