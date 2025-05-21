@@ -20,9 +20,6 @@ class GPTImageRobotController(Node):
         self.direction_pub = self.create_publisher(String, 'move_direction', 10)
         self.stop_pub = self.create_publisher(String, 'stop_robot', 10)
         self.thrust_busy_sub = self.create_subscription(Bool, 'thrust_busy', self.thrust_busy_callback, 10)
-        self.velocity_json_sub = self.create_subscription(String, '/velocity_json', self.velocity_callback, 10)
-
-        self.latest_velocity_data = None
         self.thrust_is_busy = False
         self.processing = False
         self.timer = self.create_timer(5.0, self.timer_callback)
@@ -31,9 +28,6 @@ class GPTImageRobotController(Node):
 
     def thrust_busy_callback(self, msg: Bool):
         self.thrust_is_busy = msg.data
-
-    def velocity_callback(self, msg: String):
-        self.latest_velocity_data = msg.data
 
     def timer_callback(self):
         if self.processing:
@@ -75,17 +69,17 @@ class GPTImageRobotController(Node):
 
     @staticmethod
     def estimate_corrected_distance(x, y, image_width, image_height, fov_h=90.0, fov_v=60.0, camera_height=1.1):
-        # 수직 각도 (θ)
+        # theta_deg (θ)
         y_offset = y - (image_height / 2)
         theta_deg = (y_offset / (image_height / 2)) * (fov_v / 2)
         theta_rad = math.radians(theta_deg)
 
-        # 수평 각도 (φ)
+        # phi_deg (φ)
         x_offset = x - (image_width / 2)
         phi_deg = (x_offset / (image_width / 2)) * (fov_h / 2)
         phi_rad = math.radians(phi_deg)
 
-        # 거리 계산
+        # calculate distance
         if abs(math.tan(theta_rad)) < 1e-6:
             distance = float('inf')
         else:
@@ -93,7 +87,6 @@ class GPTImageRobotController(Node):
             distance = depth_z / math.cos(phi_rad)
 
         return round(distance, 2), round(phi_deg, 2)
-
     
     def request_gpt_description(self, image_data, image_path, contour_json):
         self.get_logger().info(f"*****************************{image_path}*****************************")
@@ -119,10 +112,10 @@ class GPTImageRobotController(Node):
                             "{\n"
                             "  \"description\": {\n"
                             "    \"obstacles\": [\n"
-                            "      {\"name\": \"red buoy\", \"position\": \"left 15deg\", \"distance\": 5 },\n"
-                            "      {\"name\": \"black buoy\", \"position\": \"right 26deg\", \"distance\": 8 }\n"
+                            "      {\"name\": \"red buoy\", \"position\": \"left 15º\", \"distance\": 5 },\n"
+                            "      {\"name\": \"black buoy\", \"position\": \"right 26º\", \"distance\": 8 }\n"
                             "    ],\n"
-                            "    \"duck\": {\"found\": true, \"position\": \"front-right\", \"distance\": \"unknown\" }\n"
+                            "    \"duck\": {\"found\": true, \"position\": \"left 5º\", \"distance\": \"unknown\" }\n"
                             "  }\n"
                             "}"
                         )
@@ -137,6 +130,8 @@ class GPTImageRobotController(Node):
                                     "The image below shows water obstacles captured by the drone. "
                                     "Here is additional analysis from image contours with their id, bottom pixel, distance, area, and horizontal_angle:\n"
                                     f"{contour_json}\n\n"
+                                    "some contours have uncertain classification due to overlap or shape irregularity"
+                                    "If there is something wrong with the distance calculation or position, you can change the value by judging it arbitrarily."
                                     "Using this information, infer what each object might represent and construct the final JSON response accordingly. "
                                     "Do not include the original contour list in your response."
                                 )
@@ -149,7 +144,6 @@ class GPTImageRobotController(Node):
             top_p=0.6
         )
         description = response.choices[0].message.content.strip()
-        self.get_logger().info(f"[DESCRIPTION] {description}")
         return description
 
     def parse_description(self, description_str):
@@ -160,116 +154,84 @@ class GPTImageRobotController(Node):
         desc = parsed["description"]
         return desc
 
-    def request_decision(self, full_description, velocity_note):
-        response = openai.chat.completions.create(
-            model="gpt-4o",
-            messages=[
-                {
-                    "role": "system",
-                    "content": (
-                        "You are the navigation judgment system of a sailing drone. Based on the description, respond only to either 'stop' or 'move'. "
-                        "The water drone is twin-hull (catamaran-style). The gray objects at the bottom center of the image are engines, attached to both sides of the drone—not obstacles. "
-                        "The drone's width from left-engine to right-engine is 2.5m , The vertical length from front to behind is 5m , The height is 1.5m "
-                        "The camera is mounted 0.85 meters from the front of the drone. and 1.1m from the water surface"
-                        f"Additionally, drone's moving state here: {velocity_note}"
-                        "Gray engine parts are part of the drone, not obstacles."
-                        "Assess the threat level and distance to the obstacle by assuming the drone state after one second, taking into account its current speed and the fact that it is on the water."
-                        "If an object (like a buoy) is more than 1 meter away, it is not a threat—no avoidance action is needed. Closer than 1 meter? That may require movement or avoidance."
-                        "Be sure to print out only one word without explanation."
-                    )
-                },
-                {"role": "assistant", "content": full_description},
-                {
-                    "role": "user",
-                    "content": (
-                        "I want to find a yellow duck, and place it close front of drone engines."
-                        "If you haven't found a yellow duck, print out a 'move' command to move and look for a yellow duck on the move."
-                    )
-                }
-            ],
-            max_tokens=10,
-            top_p=0.2
-        )
-        decision = response.choices[0].message.content.strip().lower()
-        self.get_logger().info(f"[DECISION] {decision}")
-        return decision
+    def add_duck_position_context(self, current_desc_json, previous_desc_json):
+        if previous_desc_json is None:
+            return current_desc_json
 
-    def request_multiple_directions(self, full_description, n=3):
-        directions = []
+        curr_duck = current_desc_json.get("duck", {})
+        prev_duck = previous_desc_json.get("duck", {})
 
-        for i in range(n):
-            response = openai.chat.completions.create(
-                model="gpt-4o",
-                messages=[
-                    {
-                        "role": "system",
-                        "content": (
-                            "You are the system for determining the direction of a sailing drone. Respond with ONLY ONE of: 'w', 'a', 's', or 'd'."
-                            "The water drone is twin-hull (catamaran-style)."
-                            "Use the following rules to decide:"
-                            "- 'w' to move forward, 'a' to turn left, 'd' to turn right, and 's' to move backward."
-                            "- If there is an obstacle in front within 0.8m or closer, respond with 's' to move backward."
-                            "- If there is an obstacle on the left or right within 0.5m or closer, respond with 's'."
-                            "- If no such threat exists, but obstacles are detected, steer ('a' or 'd') based on the safer direction."
-                            "- If no obstacles are close and the duck has not been found, move to search."
-                            "- If duck is found and off-centered, adjust with 'a' or 'd'."
-                            "- Respond with exactly one of: 'w', 'a', 's', or 'd'. Do not explain."
-                        )
-                    },
-                    {"role": "assistant", "content": full_description},
-                    {
-                        "role": "user",
-                        "content": (
-                            "I want to find a yellow duck, and place it close front of drone engines."
-                            "If 'duck' is not found, try to avoid obstacles and rotate to look for it."
-                        )
-                    }
-                ],
-                max_tokens=10,
-                temperature=0.7,  # 다양성 확보
-                top_p=0.9
-            )
-            direction = response.choices[0].message.content.strip().lower()
-            directions.append(direction)
+        if not prev_duck.get("found", False) and not curr_duck.get("found", False):
+            curr_duck["position"] = "not found"
+            curr_duck["distance"] = "unknown"
 
-        return directions
+        elif prev_duck.get("found", False) and not curr_duck.get("found", False):
+            prev_pos = prev_duck.get("position", "unknown")
+            curr_duck["position"] = f"{prev_pos} → not found"
+            curr_duck["distance"] = "unknown"
 
-    def request_direction_evaluation(self, full_description, directions):
-        # 여러 방향 정리
-        direction_lines = "\n".join([f"{i+1}. '{d}'" for i, d in enumerate(directions)])
+        elif prev_duck.get("found", False) and curr_duck.get("found", False):
+            prev_pos = prev_duck.get("position")
+            curr_pos = curr_duck.get("position")
+            if prev_pos != curr_pos:
+                curr_duck["position"] = f"{prev_pos} → {curr_pos}"
 
-        compare_prompt = (
-            f"The following navigation decisions were made by the system based on the same description:\n\n"
-            f"{full_description}\n\n"
-            f"Here are the direction outputs:\n{direction_lines}\n\n"
-            f"Evaluate them and choose the best direction.\n"
-            f"Respond with ONLY ONE of: 'w', 'a', 's', or 'd'.\n"
-            f"Do not explain. Just respond with the final choice."
+        current_desc_json["duck"] = curr_duck
+        self.get_logger().info(f"[DUCK POSITION CONTEXT] {current_desc_json}")
+        return current_desc_json
+
+
+    def request_decision_and_direction(self, desc_str: str):
+        prompt = (
+            "You are the navigation system of a sailing water drone.\n"
+            "Based on the provided object detection results (description), make a navigation decision.\n"
+            "The drone is twin-hull (catamaran-style), 2.5m wide, 5m long, and 1.5m high.\n"
+            "The camera is mounted 0.85 meters from the front and 1.1 meters above the water surface.\n"
+            "Use the following rules to decide movement:\n"
+            "- The drone must keep a safety radius of at least 5 meter in all directions.\n"
+            "- If any object (including obstacles or duck) is detected within 5 meter, it is a threat.\n"
+            "- If there is a threat in front, move backward by deciding 's'.\n"
+            "- If there is a threat on the left or right, select 'a' or 'd' to turn the threat in the opposite direction.\n"
+            "- For example, if an object close to the left becomes a threat, output 'd'"
+            "- If the duck position is further to the left or to the left and the next position is not found, output 'd' and rotate the drone to find the duck.\n"
+            "- The first is not to hit an obstacle, and the second is to find the duck and position the duck in the center.\n"
+            "- If there is no threat and the duck is centered and close, stop.\n"
+            "Respond strictly in the following JSON format:\n"
+            "{\n"
+            "  \"decision\": \"move\" or \"stop\",\n"
+            "  \"direction\": \"w\" or \"a\" or \"s\" or \"d\"\n"
+            "}"
         )
 
         response = openai.chat.completions.create(
             model="gpt-4o",
             messages=[
-                {"role": "system", "content": "You are an evaluator choosing the best navigation direction for a sailing drone."
-                            "The water drone is twin-hull (catamaran-style)."
-                            "Use the following rules to decide:"
-                            "- 'w' to move forward, 'a' to turn left, 'd' to turn right, and 's' to move backward."
-                            "- If there is an obstacle in front within 0.8m or closer, respond with 's' to move backward."
-                            "- If there is an obstacle on the left or right within 0.5m or closer, respond with 's'."
-                            "- If no such threat exists, but obstacles are detected, steer ('a' or 'd') based on the safer direction."
-                            "- If no obstacles are close and the duck has not been found, move to search."
-                            "- If obstacles and duck are far from the drone (over than 10), move forward ('w')."
-                            "- If duck is found and off-centered, adjust with 'a' or 'd'."
-                            "- Respond with exactly one of: 'w', 'a', 's', or 'd'. Do not explain."},
-                {"role": "user", "content": compare_prompt}
+                {"role": "system", "content": prompt},
+                {"role": "user", "content": json.dumps(desc_str, indent=2)}
             ],
-            temperature=0.3,
-            max_tokens=5
+            max_tokens=100,
+            temperature=0.5,
+            top_p=0.8
         )
 
-        final_choice = response.choices[0].message.content.strip().lower()
-        self.get_logger().info(f"[FINAL CHOICE] {final_choice}")
-        return final_choice
+        result_text = response.choices[0].message.content.strip()
+
+        try:
+            # Strip code block formatting if present
+            if result_text.startswith("```"):
+                result_text = re.sub(r"```(json)?", "", result_text).strip()
+                result_text = re.sub(r"```", "", result_text).strip()
+
+            result = json.loads(result_text)
+            decision = result.get("decision", "").lower()
+            direction = result.get("direction", "").lower()
+
+            self.get_logger().info(f"[COMBINED DECISION] decision: {decision}, direction: {direction}")
+            return decision, direction
+
+        except Exception as e:
+            self.get_logger().error(f"[ERROR parsing decision+direction] {e} | Raw: {result_text}")
+            return None, None
 
 
     def main_process(self):
@@ -339,22 +301,21 @@ class GPTImageRobotController(Node):
 
             description_str = self.request_gpt_description(image_data, image_path, contour_json)
             desc_json = self.parse_description(description_str)
-            desc_str = json.dumps(desc_json)
+            
+            desc_json = self.add_duck_position_context(desc_json, getattr(self, 'last_desc_json', None))
+            
+            desc_str = json.dumps(desc_json, indent=2)
+            self.last_desc_json = desc_json
+                        
+            decision, direction = self.request_decision_and_direction(desc_str)
 
-            decision = self.request_decision(desc_str, self.latest_velocity_data or "")
             if decision == "stop":
                 self.stop_pub.publish(String(data="stop"))
-                rclpy.shutdown()
-                return
-            elif decision == "move":
-                directions = self.request_multiple_directions(desc_str, n=3)
-                direction = self.request_direction_evaluation(desc_str, directions)
-                if direction in ['w', 'a', 's', 'd']:
-                    self.direction_pub.publish(String(data=direction))
-                else:
-                    self.get_logger().warn(f"[WARNING] Invalid direction received from evaluator: {direction}")
-
-
+            elif decision == "move" and direction in ['w', 'a', 's', 'd']:
+                self.direction_pub.publish(String(data=direction))
+            else:
+                self.get_logger().warn("[WARNING] Invalid decision/direction from GPT.")
+                
         except Exception as e:
             self.get_logger().error(f"[ERROR] {str(e)}")
 
