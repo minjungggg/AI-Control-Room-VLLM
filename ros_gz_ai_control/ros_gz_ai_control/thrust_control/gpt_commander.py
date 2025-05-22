@@ -154,48 +154,36 @@ class GPTImageRobotController(Node):
         desc = parsed["description"]
         return desc
 
-    def add_duck_position_context(self, current_desc_json, previous_desc_json):
-        if previous_desc_json is None:
-            return current_desc_json
+    def get_duck_prev_position_note(self, previous_desc_json):
+        if not previous_desc_json:
+            return "The duck has not been seen previously."
 
-        curr_duck = current_desc_json.get("duck", {})
-        prev_duck = previous_desc_json.get("duck", {})
+        duck = previous_desc_json.get("duck", {})
+        if duck.get("found"):
+            pos = duck.get("position", "unknown")
+            return f"In the previous frame, the duck was seen at position: {pos}."
+        else:
+            return "The duck was not found in the previous frame."
 
-        if not prev_duck.get("found", False) and not curr_duck.get("found", False):
-            curr_duck["position"] = "not found"
-            curr_duck["distance"] = "unknown"
-
-        elif prev_duck.get("found", False) and not curr_duck.get("found", False):
-            prev_pos = prev_duck.get("position", "unknown")
-            curr_duck["position"] = f"{prev_pos} → not found"
-            curr_duck["distance"] = "unknown"
-
-        elif prev_duck.get("found", False) and curr_duck.get("found", False):
-            prev_pos = prev_duck.get("position")
-            curr_pos = curr_duck.get("position")
-            if prev_pos != curr_pos:
-                curr_duck["position"] = f"{prev_pos} → {curr_pos}"
-
-        current_desc_json["duck"] = curr_duck
-        self.get_logger().info(f"[DUCK POSITION CONTEXT] {current_desc_json}")
-        return current_desc_json
-
-
-    def request_decision_and_direction(self, desc_str: str):
+    def request_decision_and_direction(self, desc_str: str, duck_note: str):
         prompt = (
             "You are the navigation system of a sailing water drone.\n"
-            "Based on the provided object detection results (description), make a navigation decision.\n"
             "The drone is twin-hull (catamaran-style), 2.5m wide, 5m long, and 1.5m high.\n"
-            "The camera is mounted 0.85 meters from the front and 1.1 meters above the water surface.\n"
-            "Use the following rules to decide movement:\n"
-            "- The drone must keep a safety radius of at least 5 meter in all directions.\n"
-            "- If any object (including obstacles or duck) is detected within 5 meter, it is a threat.\n"
-            "- If there is a threat in front, move backward by deciding 's'.\n"
-            "- If there is a threat on the left or right, select 'a' or 'd' to turn the threat in the opposite direction.\n"
-            "- For example, if an object close to the left becomes a threat, output 'd'"
-            "- If the duck position is further to the left or to the left and the next position is not found, output 'd' and rotate the drone to find the duck.\n"
-            "- The first is not to hit an obstacle, and the second is to find the duck and position the duck in the center.\n"
-            "- If there is no threat and the duck is centered and close, stop.\n"
+            "The camera is mounted 0.85 meters from the front and 1.1 meters above the water surface.\n\n"
+            f"{duck_note}\n\n"
+            "Use the following rules:\n"
+            "1. If there are no obstacles and no duck is visible, rotate ('a' or 'd') to search.\n"
+            "2. If there are no obstacles and the duck is visible:\n"
+            "    - If the duck is far (>10m), move forward ('w') to approach it.\n"
+            "    - If the duck is close (≤10m), center the duck in the view and stop.\n"
+            "3. If obstacles are far (>8m):\n"
+            "    - If the duck is not visible, move forward or rotate freely to explore the area.\n"
+            "    - If the duck is visible, move forward in a direction that keeps distance from the obstacles while approaching the duck.\n"
+            "4. If obstacles are close (≤8m):\n"
+            "    - If the duck is not visible, rotate away from the nearest obstacle to find the duck.\n"
+            "    - If the duck is far (>10m), move forward only in a direction that turns away from the obstacle.\n"
+            "    - If the duck is close (≤10m), first adjust the drone to keep away from the obstacle, then rotate or move to center the duck.\n"
+            "5. If the duck is centered and its distance is within 2 meters, stop.\n\n"
             "Respond strictly in the following JSON format:\n"
             "{\n"
             "  \"decision\": \"move\" or \"stop\",\n"
@@ -207,7 +195,7 @@ class GPTImageRobotController(Node):
             model="gpt-4o",
             messages=[
                 {"role": "system", "content": prompt},
-                {"role": "user", "content": json.dumps(desc_str, indent=2)}
+                {"role": "user", "content": desc_str}
             ],
             max_tokens=100,
             temperature=0.5,
@@ -266,7 +254,12 @@ class GPTImageRobotController(Node):
             top_ignore_y = int(image_height * 0.2)      
             bottom_ignore_y = int(image_height * 0.9)   
             cv2.rectangle(general_color_mask, (0, 0), (image_width, top_ignore_y), 0, -1)
-            cv2.rectangle(general_color_mask, (0, bottom_ignore_y), (image_width, image_height), 0, -1)
+            
+            center_width = int(image_width * 0.3)
+            side_width = (image_width - center_width) // 2
+
+            cv2.rectangle(general_color_mask, (0, bottom_ignore_y), (side_width, image_height), 0, -1)
+            cv2.rectangle(general_color_mask, (image_width - side_width, bottom_ignore_y), (image_width, image_height), 0, -1)
 
             contours, _ = cv2.findContours(general_color_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
@@ -301,13 +294,11 @@ class GPTImageRobotController(Node):
 
             description_str = self.request_gpt_description(image_data, image_path, contour_json)
             desc_json = self.parse_description(description_str)
-            
-            desc_json = self.add_duck_position_context(desc_json, getattr(self, 'last_desc_json', None))
-            
             desc_str = json.dumps(desc_json, indent=2)
-            self.last_desc_json = desc_json
-                        
-            decision, direction = self.request_decision_and_direction(desc_str)
+
+            duck_note = self.get_duck_prev_position_note(getattr(self, 'last_desc_json', None))
+
+            decision, direction = self.request_decision_and_direction(desc_str, duck_note)
 
             if decision == "stop":
                 self.stop_pub.publish(String(data="stop"))
@@ -315,7 +306,8 @@ class GPTImageRobotController(Node):
                 self.direction_pub.publish(String(data=direction))
             else:
                 self.get_logger().warn("[WARNING] Invalid decision/direction from GPT.")
-                
+            self.last_desc_json = desc_json
+            
         except Exception as e:
             self.get_logger().error(f"[ERROR] {str(e)}")
 
