@@ -19,7 +19,7 @@ class FastImageSaver(Node):
         self.map2 = None
 
         # Declare and get parameters
-        self.declare_parameter('save_interval', 96)
+        self.declare_parameter('save_interval', 48)
         self.save_interval = self.get_parameter('save_interval').get_parameter_value().integer_value
 
         # Save path
