@@ -74,12 +74,14 @@ class GPTImageRobotController(Node):
             "You are the navigation system of an autonomous water drone.\n"
             "The drone is twin-hull (catamaran-style), 2.5m wide, 5m long, and 1.5m high.\n"
             "The camera is mounted 0.85 meters from the front and 1.1 meters above the water surface.\n\n"
-            "Your only task is to decide whether the drone should STOP or continue MOVE, based on obstacles and yellow duck position.\n\n"
-            "Use the following rules:\n"
-            "Estimate distance and position visually from the image. Do not be overly cautious."
-            "Only respond with \"stop\" if both the duck is centered and obviously within a short physical distance."
-            "If you are unsure, prefer \"move\"."
-            "Respond ONLY with the following JSON format — do NOT include any other fields such as direction or explanations:\n"
+            "Your task is to decide whether the drone should STOP or continue MOVE, based on obstacles and the yellow duck position (if visible).\n\n"
+            "Follow these rules:\n"
+            "- If any object (e.g., buoy, obstacle **except duck**) is directly in front of the drone and appears within approximately 2 meters, respond with \"stop\".\n"
+            "- If the yellow duck is centered and very close (within ~2 meters), also respond with \"stop\".\n"
+            "- If the path ahead looks clear, even if the duck is not visible, respond with \"move\".\n"
+            "- If you are unsure, prefer \"move\" over \"stop\".\n\n"
+            "Do not be overly cautious. Base your judgment on clear visual threat of collision.\n\n"
+            "Respond ONLY with the following JSON format (no explanations or markdown):\n"
             "{\n"
             "  \"decision\": \"move\" or \"stop\"\n"
             "}"
@@ -132,6 +134,7 @@ class GPTImageRobotController(Node):
             "The drone is twin-hull (catamaran-style), 2.5m wide, 5m long, and 1.5m high.\n"
             "The camera is mounted 0.85 meters from the front and 1.1 meters above the water surface.\n\n"
             "Your task is to decide the next movement direction based on image\n"
+            "Camera has a horizontal field of view (FOV) of 90 degrees and a vertical FOV of 60 degrees. Determine the dock_position based on this information\n"
             "Use the following rules:\n"
             "1. If there are not obstacles and yellow duck on image, rotate ('a' or 'd') to search the yellow duck.\n"
             "2. If there are not obstacles but the yellow duck is visible.:\n"
@@ -141,9 +144,9 @@ class GPTImageRobotController(Node):
             "    3.1 - If the yellow duck is not visible, move forward or rotate freely to search the yellow duck.\n"
             "    3.2 - If the yellow duck is visible, move forward in a direction that keeps distance from the obstacles while approaching the yellow duck.\n"
             "4. If there are obstacles on image and obstacles are close (≤8m):\n"
-            "    - If the yellow duck is not visible, rotate away from the nearest obstacle to find the yellow duck.\n"
-            "    - If the yellow duck is far (>10m), move forward only in a direction that turns away from the obstacle.\n"
-            "    - If the yellow duck is close (≤10m), first adjust the drone to keep away from the obstacle, then rotate or move to center the yellow duck.\n"
+            "    4.1 - If the yellow duck is not visible, rotate away from the nearest obstacle to find the yellow duck.\n"
+            "    4.2 - If the yellow duck is far (>10m), move forward only in a direction that turns away from the obstacle.\n"
+            "    4.3 - If the yellow duck is close (≤10m), first adjust the drone to keep away from the obstacle, then rotate or move to center the yellow duck.\n"
             "5. If the yellow duck is centered and its distance is within 2 meters, stop.\n"
             "6. If you find a yellow duck, respond duck_found as true, otherwise false.\n\n"
             "Note: If \"duck_position\" is \"unknown\", then \"duck_found\" must be false.\n"
@@ -195,6 +198,7 @@ class GPTImageRobotController(Node):
             "You are the navigation system of an autonomous water drone.\n"
             "The drone is twin-hull (catamaran-style), 2.5m wide, 5m long, and 1.5m high.\n"
             "The camera is mounted 0.85 meters from the front and 1.1 meters above the water surface.\n\n"
+            "Camera has a horizontal field of view (FOV) of 90 degrees and a vertical FOV of 60 degrees. Determine the dock_position based on this information\n"
             "Your task is to decide the next movement direction based on image\n"
             "Use the following rules:\n"
             "1. If there are not obstacles and yellow duck on image, rotate ('a' or 'd') to search the yellow duck.\n"
@@ -205,9 +209,9 @@ class GPTImageRobotController(Node):
             "    3.1 - If the yellow duck is not visible, move forward or rotate freely to search the yellow duck.\n"
             "    3.2 - If the yellow duck is visible, move forward in a direction that keeps distance from the obstacles while approaching the yellow duck.\n"
             "4. If there are obstacles on image and obstacles are close (≤8m):\n"
-            "    - If the yellow duck is not visible, rotate away from the nearest obstacle to find the yellow duck.\n"
-            "    - If the yellow duck is far (>10m), move forward only in a direction that turns away from the obstacle.\n"
-            "    - If the yellow duck is close (≤10m), first adjust the drone to keep away from the obstacle, then rotate or move to center the yellow duck.\n"
+            "    4.1 - If the yellow duck is not visible, rotate away from the nearest obstacle to find the yellow duck.\n"
+            "    4.2 - If the yellow duck is far (>10m), move forward only in a direction that turns away from the obstacle.\n"
+            "    4.3 - If the yellow duck is close (≤10m), first adjust the drone to keep away from the obstacle, then rotate or move to center the yellow duck.\n"
             "5. If the yellow duck is centered and its distance is within 2 meters, stop.\n\n"
             "Respond strictly in the following JSON format:\n"
             "Do not include any explanations, markdown formatting, or code block markers like ```json. "
@@ -299,8 +303,8 @@ class GPTImageRobotController(Node):
                     self.current_step = 0
                     return
 
-                image = cv2.imread(image_path)
-
+                image_data = self.image_to_base64(image_path)
+                
                 # 3. check_threat_in_image
                 decision = self.request_threat_assessment_from_image(image_data, image_path)
 
@@ -329,7 +333,6 @@ class GPTImageRobotController(Node):
                     self.get_logger().warn(f"[PATH MODE] Invalid direction '{direction_raw}' at step {self.current_step}. Skipping.")
                     self.current_step += 1 
 
-
                 return
 
             decision, direction, duck_found = self.request_decision_and_direction_from_image(image_data, image_path)
@@ -337,6 +340,10 @@ class GPTImageRobotController(Node):
             if duck_found:
                 self.get_logger().info("[INFO] Duck detected → switching to path planning.")
                 self.in_path_mode = True
+                
+                image_path = self.get_latest_image_path()
+                image_data = self.image_to_base64(image_path)
+                
                 self.path_plan = self.request_path_plan_from_image(image_data, image_path)
                 self.current_step = 0
                 if self.path_plan and self.path_plan[0] != "stop":
