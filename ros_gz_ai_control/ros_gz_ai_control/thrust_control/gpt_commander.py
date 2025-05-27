@@ -69,16 +69,16 @@ class GPTImageRobotController(Node):
         distance = depth_z / math.cos(phi_rad)
         return round(distance, 2), round(phi_deg, 2)
 
-    def request_threat_assessment_from_image(self, image_data, image_path, contour_json):
+    def request_threat_assessment_from_image(self, image_data, image_path):
         prompt = (
             "You are the navigation system of an autonomous water drone.\n"
             "The drone is twin-hull (catamaran-style), 2.5m wide, 5m long, and 1.5m high.\n"
             "The camera is mounted 0.85 meters from the front and 1.1 meters above the water surface.\n\n"
-            "Your only task is to decide whether the drone should STOP or continue MOVE, based on obstacles and duck position.\n\n"
+            "Your only task is to decide whether the drone should STOP or continue MOVE, based on obstacles and yellow duck position.\n\n"
             "Use the following rules:\n"
-            "1. If obstacles are close (≤8m), respond with \"stop\".\n"
-            "2. If the duck is centered and within 2 meters, respond with \"stop\".\n"
-            "3. Except for the above cases, respond with \"move\".\n\n"
+            "Estimate distance and position visually from the image. Do not be overly cautious."
+            "Only respond with \"stop\" if both the duck is centered and obviously within a short physical distance."
+            "If you are unsure, prefer \"move\"."
             "Respond ONLY with the following JSON format — do NOT include any other fields such as direction or explanations:\n"
             "{\n"
             "  \"decision\": \"move\" or \"stop\"\n"
@@ -97,8 +97,7 @@ class GPTImageRobotController(Node):
                         {"type": "image_url", "image_url": {"url": "data:image/png;base64," + image_data}},
                         {"type": "text", "text": (
                             "Is it safe for the drone to continue moving forward?\n"
-                            "Evaluate based only on this image and contour data.\n"
-                            f"Contour analysis:\n{contour_json}"
+                            "Evaluate based only on this image.\n"
                         )}
                     ]
                 }
@@ -126,26 +125,28 @@ class GPTImageRobotController(Node):
             return "stop"  # fallback for safety
 
 
-    def request_decision_and_direction_from_image(self, image_data, image_path, contour_json):
+    def request_decision_and_direction_from_image(self, image_data, image_path):
         self.get_logger().info(f"*****************************{image_path}*****************************")
         prompt = (
             "You are the navigation system of an autonomous water drone.\n"
             "The drone is twin-hull (catamaran-style), 2.5m wide, 5m long, and 1.5m high.\n"
             "The camera is mounted 0.85 meters from the front and 1.1 meters above the water surface.\n\n"
-            "Your task is to decide the next movement direction based on image and image contours\n"
+            "Your task is to decide the next movement direction based on image\n"
             "Use the following rules:\n"
-            "1. If there are no obstacles and no duck is visible, rotate ('a' or 'd') to search.\n"
-            "2. If there are no obstacles and the duck is visible:\n"
-            "    - If the duck is far (>10m), move forward ('w') to approach it.\n"
-            "    - If the duck is close (≤10m), center the duck in the view and stop.\n"
-            "3. If obstacles are far (>8m):\n"
-            "    - If the duck is not visible, move forward or rotate freely to explore the area.\n"
-            "    - If the duck is visible, move forward in a direction that keeps distance from the obstacles while approaching the duck.\n"
-            "4. If obstacles are close (≤8m):\n"
-            "    - If the duck is not visible, rotate away from the nearest obstacle to find the duck.\n"
-            "    - If the duck is far (>10m), move forward only in a direction that turns away from the obstacle.\n"
-            "    - If the duck is close (≤10m), first adjust the drone to keep away from the obstacle, then rotate or move to center the duck.\n"
-            "5. If the duck is centered and its distance is within 2 meters, stop.\n\n"
+            "1. If there are not obstacles and yellow duck on image, rotate ('a' or 'd') to search the yellow duck.\n"
+            "2. If there are not obstacles but the yellow duck is visible.:\n"
+            "    2.1 - If the yellow duck is far (>10m), move forward ('w') to approach it.\n"
+            "    2.2 - If the yellow duck is close (≤10m), center the yellow duck in the view and stop.\n"
+            "3. If there are obstacles on image and obstacles are far (>8m):\n"
+            "    3.1 - If the yellow duck is not visible, move forward or rotate freely to search the yellow duck.\n"
+            "    3.2 - If the yellow duck is visible, move forward in a direction that keeps distance from the obstacles while approaching the yellow duck.\n"
+            "4. If there are obstacles on image and obstacles are close (≤8m):\n"
+            "    - If the yellow duck is not visible, rotate away from the nearest obstacle to find the yellow duck.\n"
+            "    - If the yellow duck is far (>10m), move forward only in a direction that turns away from the obstacle.\n"
+            "    - If the yellow duck is close (≤10m), first adjust the drone to keep away from the obstacle, then rotate or move to center the yellow duck.\n"
+            "5. If the yellow duck is centered and its distance is within 2 meters, stop.\n"
+            "6. If you find a yellow duck, respond duck_found as true, otherwise false.\n\n"
+            "Note: If \"duck_position\" is \"unknown\", then \"duck_found\" must be false.\n"
             "Respond strictly in the following JSON format:\n"
             "Do not include any explanations, markdown formatting, or code block markers like ```json. "
             "Output only the raw JSON object."
@@ -153,6 +154,7 @@ class GPTImageRobotController(Node):
             "  \"decision\": \"move\" or \"stop\",\n"
             "  \"direction\": \"w\" or \"a\" or \"s\" or \"d\"\n"
             "  \"duck_found\": true or false\n"
+            "  \"duck_position\": \"unknown\" or \"left-15º\" or \"right-3º\" \n"
             "}"
         )
 
@@ -164,12 +166,11 @@ class GPTImageRobotController(Node):
                     "role": "user",
                     "content": [
                         {"type": "image_url", "image_url": {"url": "data:image/png;base64," + image_data}},
-                        {"type": "text", "text": "I want to get to the duck if it exists, while avoiding obstacles.\n"
-                                            "Only identify a duck if it is clearly present in the image.\n"
-                                            "Do not assume a duck is always there. "
-                                            "Use the contour analysis and image contents to determine presence.\n"
-                                            "Place the duck at the center-bottom of the image **only if found**.\n"
-                                            f"Contour analysis:\n{contour_json}"}
+                        {"type": "text", "text": "I want to get to the yellow duck if it exists, while avoiding obstacles.\n"
+                                            "Only identify a yellow duck if it is clearly present in the image.\n"
+                                            "Do not assume a yellow duck is always there. "
+                                            "Use image contents to determine presence.\n"
+                                            "Place the yellow duck at the center-bottom of the image **only if found**.\n"}
                     ]
                 }
             ],
@@ -188,16 +189,29 @@ class GPTImageRobotController(Node):
         except:
             return None, None, False
 
-    def request_path_plan_from_image(self, image_data, image_path, contour_json):
+    def request_path_plan_from_image(self, image_data, image_path):
         self.get_logger().info(f"[PATH PLAN] From {image_path}")
         prompt = (
-            "You are the navigation planner for an autonomous water drone.\n"
+            "You are the navigation system of an autonomous water drone.\n"
             "The drone is twin-hull (catamaran-style), 2.5m wide, 5m long, and 1.5m high.\n"
             "The camera is mounted 0.85 meters from the front and 1.1 meters above the water surface.\n\n"
-            "Given the current image and contour analysis, plan a safe path of 3 to 5 movement steps "
-            "towards the duck while avoiding obstacles. Only use: 'w', 'a', 's', 'd'.\n"
-            "avoiding means to not hit the obstacles, and not to get too close to them.\n"
+            "Your task is to decide the next movement direction based on image\n"
+            "Use the following rules:\n"
+            "1. If there are not obstacles and yellow duck on image, rotate ('a' or 'd') to search the yellow duck.\n"
+            "2. If there are not obstacles but the yellow duck is visible.:\n"
+            "    2.1 - If the yellow duck is far (>10m), move forward ('w') to approach it.\n"
+            "    2.2 - If the yellow duck is close (≤10m), center the yellow duck in the view and stop.\n"
+            "3. If there are obstacles on image and obstacles are far (>8m):\n"
+            "    3.1 - If the yellow duck is not visible, move forward or rotate freely to search the yellow duck.\n"
+            "    3.2 - If the yellow duck is visible, move forward in a direction that keeps distance from the obstacles while approaching the yellow duck.\n"
+            "4. If there are obstacles on image and obstacles are close (≤8m):\n"
+            "    - If the yellow duck is not visible, rotate away from the nearest obstacle to find the yellow duck.\n"
+            "    - If the yellow duck is far (>10m), move forward only in a direction that turns away from the obstacle.\n"
+            "    - If the yellow duck is close (≤10m), first adjust the drone to keep away from the obstacle, then rotate or move to center the yellow duck.\n"
+            "5. If the yellow duck is centered and its distance is within 2 meters, stop.\n\n"
             "Respond strictly in the following JSON format:\n"
+            "Do not include any explanations, markdown formatting, or code block markers like ```json. "
+            "Output only the raw JSON object."
             "{ \"path\": [\"a\", \"w\", \"w\"] }"
         )
         response = openai.chat.completions.create(
@@ -208,11 +222,13 @@ class GPTImageRobotController(Node):
                     "role": "user",
                     "content": [
                         {"type": "image_url", "image_url": {"url": "data:image/png;base64," + image_data}},
-                        {"type": "text", "text": f"Contour analysis:\n{contour_json}"}
+                        {"type": "text", "text": "I want to get to the yellow duck while avoiding obstacles.\n"
+                                            "Use image contents to determine presence.\n"
+                                            "Place the yellow duck at the center-bottom of the image\n"}
                     ]
                 }
             ],
-            max_tokens=150,
+            max_tokens=40,
             temperature=0.5,
             top_p=0.8
         )
@@ -256,33 +272,15 @@ class GPTImageRobotController(Node):
 
             top_ignore_y = int(image_height * 0.2)
             bottom_ignore_y = int(image_height * 0.9)
-            center_width = int(image_width * 0.3)
-            side_width = (image_width - center_width) // 2
+            unit = image_width / 63
+            x1 = int(unit * 7)        # left engine
+            x2 = int(unit * (7 + 8))  # left engine
+            x3 = int(unit * (7 + 8 + 33))      # right engine
+            x4 = int(unit * (7 + 8 + 33 + 8))  # right engine
 
             cv2.rectangle(general_color_mask, (0, 0), (image_width, top_ignore_y), 0, -1)
-            cv2.rectangle(general_color_mask, (0, bottom_ignore_y), (side_width, image_height), 0, -1)
-            cv2.rectangle(general_color_mask, (image_width - side_width, bottom_ignore_y), (image_width, image_height), 0, -1)
-
-            contours, _ = cv2.findContours(general_color_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-
-            contour_summary = []
-            for idx, contour in enumerate(contours):
-                area = cv2.contourArea(contour)
-                x, y, w, h = cv2.boundingRect(contour)
-                aspect_ratio = round(h / w, 2) if w != 0 else 0
-                bottom = max(contour, key=lambda p: p[0][1])[0]
-                x_b, y_b = bottom
-                distance, horizontal_angle = self.estimate_corrected_distance(x_b, y_b, image_width, image_height)
-                contour_summary.append({
-                    "id": idx + 1,
-                    "bottom_pixel": [int(x_b), int(y_b)],
-                    "distance_m": distance,
-                    "horizontal_angle": horizontal_angle,
-                    "area": round(area, 1),
-                    "aspect_ratio": aspect_ratio
-                })
-
-            contour_json = json.dumps({"contour_analysis": contour_summary})
+            cv2.rectangle(general_color_mask, (x1, bottom_ignore_y), (x2, image_height), 0, -1)  # left engine
+            cv2.rectangle(general_color_mask, (x3, bottom_ignore_y), (x4, image_height), 0, -1)  # right engine
 
             if self.in_path_mode:
                 if self.current_step >= len(self.path_plan):
@@ -304,7 +302,7 @@ class GPTImageRobotController(Node):
                 image = cv2.imread(image_path)
 
                 # 3. check_threat_in_image
-                decision = self.request_threat_assessment_from_image(image_data, image_path, contour_json)
+                decision = self.request_threat_assessment_from_image(image_data, image_path)
 
                 if decision == "stop":
                     self.get_logger().warn("[THREAT] GPT advised stop during path plan.")
@@ -334,12 +332,12 @@ class GPTImageRobotController(Node):
 
                 return
 
-            decision, direction, duck_found = self.request_decision_and_direction_from_image(image_data, image_path, contour_json)
+            decision, direction, duck_found = self.request_decision_and_direction_from_image(image_data, image_path)
 
             if duck_found:
                 self.get_logger().info("[INFO] Duck detected → switching to path planning.")
                 self.in_path_mode = True
-                self.path_plan = self.request_path_plan_from_image(image_data, image_path, contour_json)
+                self.path_plan = self.request_path_plan_from_image(image_data, image_path)
                 self.current_step = 0
                 if self.path_plan and self.path_plan[0] != "stop":
                     self.direction_pub.publish(String(data=self.path_plan[0]))
