@@ -1,6 +1,14 @@
 <?xml version="1.0" ?>
 <sdf version="1.6">
-    <model name="surmark_buoy_black">  
+    <model name="surmark_buoy_black"> 
+
+        <plugin
+            filename="gz-sim-pose-publisher-system"
+            name="gz::sim::systems::PosePublisher">
+            <publish_model_pose>1</publish_model_pose>
+            <update_frequency>30</update_frequency>  <!-- 1초에 30회 -->
+        </plugin>
+
         <plugin
             filename="gz-waves-hydrodynamics-system"
             name="gz::sim::systems::Hydrodynamics">

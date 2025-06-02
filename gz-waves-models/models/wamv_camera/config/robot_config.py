@@ -21,6 +21,14 @@ def launch_setup(context, *args, **kwargs):
         + ["/world/waves/clock@rosgraph_msgs/msg/Clock@gz.msgs.Clock",
            "/clock@rosgraph_msgs/msg/Clock@gz.msgs.Clock",
            ]
+        +[
+            [
+                "/model/duck/pose@geometry_msgs/msg/PoseStamped@gz.msgs.Pose",
+                "/model/surmark_buoy_red/pose@geometry_msgs/msg/PoseStamped@gz.msgs.Pose",
+                "/model/surmark_buoy_white/pose@geometry_msgs/msg/PoseStamped@gz.msgs.Pose",
+                "/model/surmark_buoy_black/pose@geometry_msgs/msg/PoseStamped@gz.msgs.Pose",
+            ]
+        ]
         + [
             f"/model/{namespace}/pose@geometry_msgs/msg/PoseArray@gz.msgs.Pose_V",
             f"/world/waves/model/wamv_camera/link/camera_link/sensor/camera_sensor/image@sensor_msgs/msg/Image@gz.msgs.Image",
