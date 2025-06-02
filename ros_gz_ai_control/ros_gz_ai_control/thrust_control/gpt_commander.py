@@ -148,6 +148,10 @@ class GPTImageRobotController(Node):
             "The camera is mounted 0.85 meters from the front and 1.1 meters above the water surface.\n\n"
             "Camera has a horizontal field of view (FOV) of 90º and a vertical FOV of 60º."
             "According to this, it would be left 45º if it was on the left-end and right 45º if it was on the right-end.\n"
+            "The duck_position should describe where the yellow duck appears in the image using approximate angular position from the center.\n"
+            "Use one of the following formats:"
+            "   - \"left-30º\", \"left-15º\", \"center\", \"right-10º\", \"right-25º\""
+            "   - If no duck is visible, respond with: \"unknown\""
             
             "Your task is to decide the next movement direction based on the current image and recent navigation history.\n\n"
             
@@ -169,7 +173,8 @@ class GPTImageRobotController(Node):
             
             "Supplementary logic using recent decision history (only apply if the image does not clearly show the duck):\n"
             "- If the duck was recently visible (e.g., duck_found : true & duck_position : left-15º) but now missing, consider reversing direction or retracing steps.\n"
-            "- If the duck has not been seen in multiple steps, attempt a new direction to search (rotate left or right).\n"
+            "- If the duck has not been seen for multiple steps, try continuously rotating in the same direction (e.g., keep turning left 'a' for several steps).\n"
+            "- Avoid repeating the same short back-and-forth pattern (e.g., a → d → a → d).\n"
             "- Avoid repeating the same direction repeatedly when the duck is not found.\n"
             "- Always prioritize decisions based on clear, visible objects in the current image. Use history only if uncertain.\n\n"
             
@@ -180,7 +185,7 @@ class GPTImageRobotController(Node):
             "  \"decision\": \"move\" or \"stop\",\n"
             "  \"direction\": \"w\" or \"a\" or \"s\" or \"d\"\n"
             "  \"duck_found\": true or false\n"
-            "  \"duck_position\": \"unknown\" or \"left-15º\" or \"right-3º\" \n"
+            "  \"duck_position\": a string such as \"unknown\" or \"left-20º\" or \"right-10º\" or \"center\" \n"
             "}"
         )
 
@@ -216,8 +221,8 @@ class GPTImageRobotController(Node):
                 }
             ],
             max_tokens=100,
-            temperature=0.5,
-            top_p=0.8
+            temperature=0.7,
+            top_p=0.5
         )
         result_text = response.choices[0].message.content.strip()
         self.get_logger().info(f"GPT response: {result_text}")
