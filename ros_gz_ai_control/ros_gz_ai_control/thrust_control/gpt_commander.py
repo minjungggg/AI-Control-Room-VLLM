@@ -3,9 +3,7 @@ import re
 import base64
 import threading
 import json
-import cv2
 from collections import deque
-import numpy as np
 import openai
 import rclpy
 from rclpy.node import Node
@@ -22,10 +20,10 @@ class GPTImageRobotController(Node):
         self.thrust_busy_sub = self.create_subscription(Bool, 'thrust_busy', self.thrust_busy_callback, 10)
 
         self.in_path_mode = False
-        self.path_plan = []
+        # self.path_plan = []
         self.current_step = 0
-        self.prev_observations = deque(maxlen=3)
-        self.last_known_duck_position = "unknown"
+        # self.prev_observations = deque(maxlen=3)
+        # self.last_known_duck_position = "unknown"
 
         self.thrust_is_busy = False
         self.processing = False
@@ -40,30 +38,30 @@ class GPTImageRobotController(Node):
         self.processing = True
         threading.Thread(target=self.main_process, daemon=True).start()
 
-    def record_observation(self, decision, direction, duck_found, duck_position):
-        obs = {
-            "decision": decision,
-            "direction": direction,
-            "duck_found": duck_found,
-            "duck_position": duck_position
-        }
-        self.prev_observations.appendleft(obs)
+    # def record_observation(self, decision, direction, duck_found, duck_position):
+    #     obs = {
+    #         "decision": decision,
+    #         "direction": direction,
+    #         "duck_found": duck_found,
+    #         "duck_position": duck_position
+    #     }
+    #     self.prev_observations.appendleft(obs)
 
-    def get_prev_summary_note(self):
-        if not self.prev_observations:
-            return "No previous observation available."
+    # def get_prev_summary_note(self):
+    #     if not self.prev_observations:
+    #         return "No previous observation available."
 
-        note = "Recent observations:\n"
-        for idx, obs in enumerate(self.prev_observations, 1):
-            note += f"{idx} info:\n"
-            note += json.dumps({
-                "decision": obs["decision"],
-                "direction": obs["direction"],
-                "duck_found": obs["duck_found"],
-                "duck_position": obs["duck_position"]
-            }, ensure_ascii=False)
-            note += "\n"
-        return note
+    #     note = "Recent observations:\n"
+    #     for idx, obs in enumerate(self.prev_observations, 1):
+    #         note += f"{idx} info:\n"
+    #         note += json.dumps({
+    #             "decision": obs["decision"],
+    #             "direction": obs["direction"],
+    #             "duck_found": obs["duck_found"],
+    #             "duck_position": obs["duck_position"]
+    #         }, ensure_ascii=False)
+    #         note += "\n"
+    #     return note
 
     def get_latest_image_path(self):
         image_dir = os.path.expanduser('~/saved_images')
@@ -210,7 +208,6 @@ class GPTImageRobotController(Node):
                                             "    - path(option): a planned movement sequence, only present if the duck was found and path planning was triggered\n\n"
                                             "Use this historical information when instructed by the rules above (e.g., Rule 1, 3.1, and 4.1).\n"
                                             "-------------------------------------------------\n"
-                                            + self.get_prev_summary_note() + "\n"
                                             )}
                     ]
                 }
@@ -301,12 +298,12 @@ class GPTImageRobotController(Node):
             if self.in_path_mode:
                 if self.current_step >= len(self.path_plan):
                     self.get_logger().info("[PATH MODE] Path complete. Returning to normal mode.")
-                    self.record_observation(
-                        decision="move",
-                        direction=self.path_plan,  # Full plan completed
-                        duck_found=True,
-                        duck_position=self.last_known_duck_position
-                    )
+                    # self.record_observation(
+                    #     decision="move",
+                    #     direction=self.path_plan,  # Full plan completed
+                    #     duck_found=True,
+                    #     duck_position=self.last_known_duck_position
+                    # )
                     self.in_path_mode = False
                     self.path_plan = []
                     self.current_step = 0
@@ -329,12 +326,12 @@ class GPTImageRobotController(Node):
                 if decision == "stop":
                     executed_path = self.path_plan[:self.current_step]
                     self.get_logger().warn("[THREAT] GPT advised stop during path plan.")
-                    self.record_observation(
-                        decision="stop",
-                        direction=executed_path,
-                        duck_found=True,
-                        duck_position=self.last_known_duck_position
-                    )
+                    # self.record_observation(
+                    #     decision="stop",
+                    #     direction=executed_path,
+                    #     duck_found=True,
+                    #     duck_position=self.last_known_duck_position
+                    # )
                     self.in_path_mode = False
                     self.path_plan = []
                     self.current_step = 0
@@ -368,7 +365,7 @@ class GPTImageRobotController(Node):
                 self.current_step = 0
                 
                 # Record the observation before executing the path plan
-                self.record_observation(decision, [direction], duck_found, duck_position)
+                # self.record_observation(decision, [direction], duck_found, duck_position)
                 
                 if self.path_plan and self.path_plan[0] != "stop":
                     self.direction_pub.publish(String(data=self.path_plan[0]))
@@ -376,7 +373,7 @@ class GPTImageRobotController(Node):
                     self.current_step += 1
                 return
             
-            self.record_observation(decision, [direction], duck_found, duck_position)
+            # self.record_observation(decision, [direction], duck_found, duck_position)
 
             if decision == "stop":
                 self.stop_pub.publish(String(data="stop"))
@@ -388,7 +385,6 @@ class GPTImageRobotController(Node):
         finally:
             self.processing = False
 
-
 def main(args=None):
     rclpy.init(args=args)
     node = GPTImageRobotController()
@@ -399,7 +395,6 @@ def main(args=None):
     finally:
         node.destroy_node()
         rclpy.shutdown()
-
 
 if __name__ == '__main__':
     main()
