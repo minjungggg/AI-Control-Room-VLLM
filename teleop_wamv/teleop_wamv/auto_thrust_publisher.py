@@ -18,11 +18,11 @@ class AutoThrustPublisher(Node):
         right = Float64()
 
         if elapsed < 5:
-            left.data = 100.0
-            right.data = 100.0
-        elif elapsed < 15:
             left.data = -100.0
             right.data = -100.0
+        elif elapsed < 15:
+            left.data = 100.0
+            right.data = 100.0
         elif elapsed < 20:
             left.data = -100.0
             right.data = 100.0
@@ -43,7 +43,6 @@ def main(args=None):
     node = AutoThrustPublisher()
     rclpy.spin(node)
     node.destroy_node()
-    rclpy.shutdown()
 
 if __name__ == '__main__':
     main()

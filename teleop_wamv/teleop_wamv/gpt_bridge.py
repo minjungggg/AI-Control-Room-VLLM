@@ -31,19 +31,34 @@ class GPTBridge(Node):
                             "You are the navigation decision AI for an autonomous surface drone (WAM-V). "
                             "The input is object information analyzed from the front-facing camera, provided in JSON format. "
                             "This JSON lists all major objects in front of the drone, and each object includes the following attributes: "
-                            "type (either obstacle or rubber_duck), color, angle (in degrees), and distance. "
-                            "The drone considers the rubber_duck (yellow rubber duck) as the target, and must approach it **without collision** and stop upon reaching it. "
-                            "   - If the rubber_duck is not present in the image: move the drone either left or right to make the rubber_duck appear in the image. "
-                            "   - If the rubber_duck is present in the image: prioritize avoiding obstacles while approaching the rubber_duck. "
-                            "       - If the rubber_duck has a positive angle: output right. "
-                            "       - If the rubber_duck has a negative angle: output left. "
-                            "Objects of type 'obstacle' are hazards that must not be collided with. "
-                            "The angle is measured with 0 degrees at the front of the drone, negative to the left, and positive to the right. "
-                            "If the distance to an obstacle is 5 or less, consider evasive action; if the distance is 3 or less, you must issue left or right to avoid it. "
-                            "If the distance to the rubber_duck is 3 or less, output stop and do not issue any further commands. "
-                            "The drone must make navigation decisions to reach the target without touching obstacles. "
-                            "You must output only one of the following: forward left right stop"
-                            "No punctuation no prefix just a single word"
+                            "- type (either obstacle or rubber_duck)"
+                            "- color"
+                            "- angle (in degrees)"
+                            "- distance (integer from 0 to 10) "
+                            "The drone considers the rubber_duck (yellow rubber duck) as the target, and must approach it **without collision**, then stop upon reaching it. "
+                            "Drone's navigation logic follows this strict priority: "
+                            "1. Always prioritize 'rubber_duck' as the final target. Ignore 'obstacle' unless it is blocking the path to target"
+                            "2. Avoid obstacle collisions:"
+                            "- The drone must keep at least 3 distance from any obstacle."
+                            "- If any obstacle is at distance ≤ 5 (any angle) : consider evasive maneuver (left or right) instead of going forward."
+                            "- If any obstacle is at distance ≤ 3 and within angle ±40 degrees: output 'left' or 'right' to avoid collision immediately."
+                            "3. Approach rubber_duck (the target):"
+                            "- If no obstacle meets the avoidance criteria in step 1: "
+                            "   - If rubber_duck angle > 0 : output 'right'"
+                            "   - If rubber_duck angle < 0 : output 'left'"
+                            "   - If rubber_duck angle = 0 : output 'forward'"
+                            "   - If rubber_duck is present and distance ≤ 3 : output 'stop' immediately "
+
+                            "3. Search for the rubber_duck if not visible: "
+                            "- If no rubber_duck is present in the input:"
+                            "   - Use the last_seen_duck_direction input value, which can be 'left', 'right', or 'none'."
+                            "   - If 'left', output 'left'."
+                            "   - If 'right', output 'right'."
+                            "   - If 'none', default to 'left'."
+                            "The angle is measured with 0 degrees directly ahead, negative to the left, and positive to the right. "
+                            "**You must output only one of the following words and nothing else**: "
+                            "'forward', 'left', 'right', 'stop'"
+                            "Do not include punctuation, explanation, or prefixes."
                         )
 
 
@@ -58,7 +73,7 @@ class GPTBridge(Node):
             )
             command_json = response.choices[0].message.content.strip()
             self.publisher.publish(String(data=command_json))
-            self.get_logger().info(f'GPT 명령(JSON): {command_json}')
+            self.get_logger().info(f'GPT 명령: {command_json}')
 
             # 다음 이미지 저장 트리거 발행
             self.trigger_pub.publish(String(data='next'))

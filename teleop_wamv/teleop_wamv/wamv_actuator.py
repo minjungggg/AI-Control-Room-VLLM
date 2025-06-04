@@ -27,16 +27,16 @@ class WamvActuator(Node):
             self.right_pub.publish(thrust)
         elif command == 'left':
             self.is_stopped = False
-            self.left_pub.publish(Float64(data=0.0))
+            self.left_pub.publish(Float64(data=-2.0))
             self.right_pub.publish(Float64(data=5.0))
         elif command == 'right':
             self.is_stopped = False
             self.left_pub.publish(Float64(data=5.0))
-            self.right_pub.publish(Float64(data=0.0))
+            self.right_pub.publish(Float64(data=-2.0))
         elif command == 'stop':
             if not self.is_stopped:
-                self.left_pub.publish(Float64(data=-20))
-                self.right_pub.publish(Float64(data=-20))
+                self.left_pub.publish(Float64(data=-50))
+                self.right_pub.publish(Float64(data=-50))
                 time.sleep(3.0)
                 self.left_pub.publish(Float64(data=0.0))
                 self.right_pub.publish(Float64(data=0.0))
