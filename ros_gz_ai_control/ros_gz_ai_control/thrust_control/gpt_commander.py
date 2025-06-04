@@ -173,13 +173,6 @@ class GPTImageRobotController(Node):
             "6. If you find a yellow duck, respond duck_found as true, otherwise false.\n\n"
             "Note: If \"duck_position\" is \"unknown\", then \"duck_found\" must be false.\n"
             
-            "Supplementary logic using recent decision history (only apply if the image does not clearly show the duck):\n"
-            "- If the duck was recently visible (e.g., duck_found : true & duck_position : left-15º) but now missing, consider reversing direction or retracing steps.\n"
-            "- If the duck has not been seen for multiple steps, try continuously rotating in the same direction (e.g., keep turning left 'a' for several steps).\n"
-            "- Avoid repeating the same short back-and-forth pattern (e.g., a → d → a → d).\n"
-            "- Avoid repeating the same direction repeatedly when the duck is not found.\n"
-            "- Always prioritize decisions based on clear, visible objects in the current image. Use history only if uncertain.\n\n"
-            
             "Respond strictly in the following JSON format:\n"
             "Do not include any explanations, markdown formatting, or code block markers like ```json. "
             "Output only the raw JSON object."
