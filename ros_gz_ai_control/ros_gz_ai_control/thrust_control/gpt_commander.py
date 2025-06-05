@@ -3,6 +3,7 @@ import re
 import base64
 import threading
 import json
+import cv2
 from collections import deque
 import openai
 import rclpy
@@ -37,31 +38,6 @@ class GPTImageRobotController(Node):
             return
         self.processing = True
         threading.Thread(target=self.main_process, daemon=True).start()
-
-    # def record_observation(self, decision, direction, duck_found, duck_position):
-    #     obs = {
-    #         "decision": decision,
-    #         "direction": direction,
-    #         "duck_found": duck_found,
-    #         "duck_position": duck_position
-    #     }
-    #     self.prev_observations.appendleft(obs)
-
-    # def get_prev_summary_note(self):
-    #     if not self.prev_observations:
-    #         return "No previous observation available."
-
-    #     note = "Recent observations:\n"
-    #     for idx, obs in enumerate(self.prev_observations, 1):
-    #         note += f"{idx} info:\n"
-    #         note += json.dumps({
-    #             "decision": obs["decision"],
-    #             "direction": obs["direction"],
-    #             "duck_found": obs["duck_found"],
-    #             "duck_position": obs["duck_position"]
-    #         }, ensure_ascii=False)
-    #         note += "\n"
-    #     return note
 
     def get_latest_image_path(self):
         image_dir = os.path.expanduser('~/saved_images')
@@ -295,15 +271,39 @@ class GPTImageRobotController(Node):
 
             image_data = self.image_to_base64(image_path)
 
+            # image = cv2.imread(image_path)
+            # hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+            # image_height, image_width = image.shape[:2]
+
+            # hsv_ranges = [
+            #     ((0, 50, 50), (10, 255, 255)),
+            #     ((160, 50, 50), (180, 255, 255)),
+            #     ((20, 50, 50), (40, 255, 255)),
+            #     ((0, 0, 0), (180, 255, 80)),
+            #     ((130, 30, 30), (160, 255, 255)),
+            #     ((35, 50, 50), (85, 255, 255)),
+            # ]
+            # masks = [cv2.inRange(hsv, lower, upper) for (lower, upper) in hsv_ranges]
+            # general_color_mask = masks[0]
+            # for m in masks[1:]:
+            #     general_color_mask = cv2.bitwise_or(general_color_mask, m)
+
+            # top_ignore_y = int(image_height * 0.2)
+            # bottom_ignore_y = int(image_height * 0.9)
+            # unit = image_width / 63
+            # x1 = int(unit * 7)        # left engine
+            # x2 = int(unit * (7 + 8))  # left engine
+            # x3 = int(unit * (7 + 8 + 33))      # right engine
+            # x4 = int(unit * (7 + 8 + 33 + 8))  # right engine
+
+            # cv2.rectangle(general_color_mask, (0, 0), (image_width, top_ignore_y), 0, -1)
+            # cv2.rectangle(general_color_mask, (x1, bottom_ignore_y), (x2, image_height), 0, -1)  # left engine
+            # cv2.rectangle(general_color_mask, (x3, bottom_ignore_y), (x4, image_height), 0, -1)  # right engine
+
+
             if self.in_path_mode:
                 if self.current_step >= len(self.path_plan):
                     self.get_logger().info("[PATH MODE] Path complete. Returning to normal mode.")
-                    # self.record_observation(
-                    #     decision="move",
-                    #     direction=self.path_plan,  # Full plan completed
-                    #     duck_found=True,
-                    #     duck_position=self.last_known_duck_position
-                    # )
                     self.in_path_mode = False
                     self.path_plan = []
                     self.current_step = 0
@@ -326,12 +326,6 @@ class GPTImageRobotController(Node):
                 if decision == "stop":
                     executed_path = self.path_plan[:self.current_step]
                     self.get_logger().warn("[THREAT] GPT advised stop during path plan.")
-                    # self.record_observation(
-                    #     decision="stop",
-                    #     direction=executed_path,
-                    #     duck_found=True,
-                    #     duck_position=self.last_known_duck_position
-                    # )
                     self.in_path_mode = False
                     self.path_plan = []
                     self.current_step = 0
@@ -363,17 +357,12 @@ class GPTImageRobotController(Node):
                 
                 self.path_plan = self.request_path_plan_from_image(image_data, image_path)
                 self.current_step = 0
-                
-                # Record the observation before executing the path plan
-                # self.record_observation(decision, [direction], duck_found, duck_position)
-                
+           
                 if self.path_plan and self.path_plan[0] != "stop":
                     self.direction_pub.publish(String(data=self.path_plan[0]))
                     self.get_logger().info(f"[PATH MODE] Immediately executing step 1: {self.path_plan[0]}")
                     self.current_step += 1
                 return
-            
-            # self.record_observation(decision, [direction], duck_found, duck_position)
 
             if decision == "stop":
                 self.stop_pub.publish(String(data="stop"))
