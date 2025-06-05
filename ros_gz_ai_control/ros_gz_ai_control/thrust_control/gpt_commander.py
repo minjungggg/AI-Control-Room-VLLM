@@ -21,7 +21,7 @@ class GPTImageRobotController(Node):
         self.thrust_busy_sub = self.create_subscription(Bool, 'thrust_busy', self.thrust_busy_callback, 10)
 
         self.in_path_mode = False
-        # self.path_plan = []
+        self.path_plan = []
         self.current_step = 0
         # self.prev_observations = deque(maxlen=3)
         # self.last_known_duck_position = "unknown"
@@ -199,20 +199,20 @@ class GPTImageRobotController(Node):
             "The gray object you see underneath the image is the front of the drone engine. It's not an obstacle.\n"
             "The engine part is the front of the drone, and the width of the engine is equal to the total lateral length of the drone.\n\n"
             "Camera has a horizontal field of view (FOV) of 90º and a vertical FOV of 60º. According to this, it would be left 45º if it was on the left-end and right 45º if it was on the right-end.\n"
+            "All directional decisions (left/right) must be made based strictly on the image coordinates:\n"
+            "- The left side of the image is 'left'.\n"
+            "- The right side of the image is 'right'.\n"
             "Your task is to decide the next movement direction based on image\n"
             "Use the following rules:\n"
-            "1. If there are not obstacles and yellow duck on image, rotate ('a' or 'd') to search the yellow duck.\n"
-            "2. If there are not obstacles but the yellow duck is visible.:\n"
-            "    2.1 - If the yellow duck is far , move forward ('w') to approach it.\n"
-            "    2.2 - If the yellow duck is close , center the yellow duck in the view and stop.\n"
-            "3. If there are obstacles on image and obstacles are far:\n"
-            "    3.1 - If the yellow duck is not visible, move forward or rotate freely to search the yellow duck.\n"
-            "    3.2 - If the yellow duck is visible, move forward in a direction that keeps distance from the obstacles while approaching the yellow duck.\n"
-            "4. If there are obstacles on image and obstacles are close:\n"
-            "    4.1 - If the yellow duck is not visible, rotate away from the nearest obstacle to find the yellow duck.\n"
-            "    4.2 - If the yellow duck is far, move forward only in a direction that turns away from the obstacle.\n"
-            "    4.3 - If the yellow duck is close, first adjust the drone to keep away from the obstacle, then rotate or move to center the yellow duck.\n"
-            "5. If the yellow duck is centered and its distance is within 2 meters, stop.\n\n"
+            "1. If there are no obstacles and the yellow duck is visible:\n"
+            "    - If the yellow duck is on the right, rotate right ('d') until it is near the center, then move forward ('w').\n"
+            "    - If the yellow duck is on the left, rotate left ('a') until it is near the center, then move forward ('w').\n"
+            "    - Do not rotate in the opposite direction of the duck's position.\n"
+            "2. If obstacles exist and are far:\n"
+            "    - Prioritize approaching the duck while maintaining a safe path.\n"
+            "3. If obstacles are close:\n"
+            "    - Avoid obstacles using the opposite direction, then continue toward the duck.\n"
+            "4. If the yellow duck is centered and within 2 meters, stop.\n\n"
             "Respond strictly in the following JSON format:\n"
             "Do not include any explanations, markdown formatting, or code block markers like ```json. "
             "Output only the raw JSON object."
@@ -313,7 +313,6 @@ class GPTImageRobotController(Node):
                 decision = self.request_threat_assessment_from_image(image_data, image_path)
 
                 if decision == "stop":
-                    executed_path = self.path_plan[:self.current_step]
                     self.get_logger().warn("[THREAT] GPT advised stop during path plan.")
                     self.in_path_mode = False
                     self.path_plan = []
