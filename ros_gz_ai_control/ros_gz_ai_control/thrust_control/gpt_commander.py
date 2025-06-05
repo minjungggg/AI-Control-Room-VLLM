@@ -171,19 +171,6 @@ class GPTImageRobotController(Node):
                                             "Do not assume a yellow duck is always there. "
                                             "Use image contents to determine presence.\n"
                                             "Place the yellow duck at the center-bottom of the image **only if found**.\n"
-                                            "-------------------------------------------------\n"
-                                            "Below is a summary of the previous 3 observations made by the navigation system, listed in chronological order:\n"
-                                            "    - 1 info: most recent observation (just before the current image)\n"
-                                            "    - 2 info: one step before that\n"
-                                            "    - 3 info: the oldest of the last three observations\n\n"
-                                            "Each observation includes:\n"
-                                            "    - decision: whether the drone moved or stopped\n"
-                                            "    - direction: which direction the drone moved (w, a, s, or d)\n"
-                                            "    - duck_found: whether a yellow duck was found in that step\n"
-                                            "    - duck_position: estimated angular position of the duck (if found)\n"
-                                            "    - path(option): a planned movement sequence, only present if the duck was found and path planning was triggered\n\n"
-                                            "Use this historical information when instructed by the rules above (e.g., Rule 1, 3.1, and 4.1).\n"
-                                            "-------------------------------------------------\n"
                                             )}
                     ]
                 }
@@ -239,7 +226,7 @@ class GPTImageRobotController(Node):
                     "role": "user",
                     "content": [
                         {"type": "image_url", "image_url": {"url": "data:image/png;base64," + image_data}},
-                        {"type": "text", "text": "I want to get to the yellow duck while avoiding obstacles.\n"
+                        {"type": "text", "text": "Make the decision for the drone to reach the yellow duck. Yellow duck is not an obstacle, so don't avoid it."
                                             "Use image contents to determine presence.\n"
                                             "Place the yellow duck at the center-bottom of the image\n"
                                             "The rotation of direction doesn't necessarily have to be one. There's no problem with multiple times.\n"
