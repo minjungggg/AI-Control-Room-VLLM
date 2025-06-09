@@ -3,8 +3,6 @@ import re
 import base64
 import threading
 import json
-import cv2
-from collections import deque
 import openai
 import rclpy
 from rclpy.node import Node
@@ -23,8 +21,6 @@ class GPTImageRobotController(Node):
         self.in_path_mode = False
         self.path_plan = []
         self.current_step = 0
-        # self.prev_observations = deque(maxlen=3)
-        # self.last_known_duck_position = "unknown"
 
         self.thrust_is_busy = False
         self.processing = False
@@ -120,8 +116,8 @@ class GPTImageRobotController(Node):
             "You are the navigation system of an autonomous water drone.\n"
             "The drone is twin-hull (catamaran-style), 2.5m wide, 5m long, and 1.5m high.\n"
             "The camera is mounted 0.85 meters from the front and 1.1 meters above the water surface.\n"
-            "The gray object you see underneath the image is the front of the drone engine. It's not an obstacle.\n"
-            "The engine part is the front of the drone, and the width of the engine is equal to the total lateral length of the drone.\n\n"
+            "The image has been edited to remove unnecessary elements such as the front engine cover of the drone, to simplify perception and reduce misclassification of obstacles.\n"
+            "Note: The area hidden at the bottom of the image represents the front engine of the drone. Avoid letting obstacles touch this region even if it is not visible in the image.\n\n"
             "Camera has a horizontal field of view (FOV) of 90º and a vertical FOV of 60º."
             "According to this, it would be left 45º if it was on the left-end and right 45º if it was on the right-end.\n"
             "The duck_position should describe where the yellow duck appears in the image using approximate angular position from the center.\n"
@@ -196,8 +192,8 @@ class GPTImageRobotController(Node):
             "You are the navigation system of an autonomous water drone.\n"
             "The drone is twin-hull (catamaran-style), 2.5m wide, 5m long, and 1.5m high.\n"
             "The camera is mounted 0.85 meters from the front and 1.1 meters above the water surface.\n"
-            "The gray object you see underneath the image is the front of the drone engine. It's not an obstacle.\n"
-            "The engine part is the front of the drone, and the width of the engine is equal to the total lateral length of the drone.\n\n"
+            "The image has been edited to remove unnecessary elements such as the front engine cover of the drone, to simplify perception and reduce misclassification of obstacles.\n"
+            "Note: The area hidden at the bottom of the image represents the front engine of the drone. Avoid letting obstacles touch this region even if it is not visible in the image.\n\n"
             "Camera has a horizontal field of view (FOV) of 90º and a vertical FOV of 60º. According to this, it would be left 45º if it was on the left-end and right 45º if it was on the right-end.\n"
             "All directional decisions (left/right) must be made based strictly on the image coordinates:\n"
             "- The left side of the image is 'left'.\n"
@@ -259,36 +255,6 @@ class GPTImageRobotController(Node):
                 return
 
             image_data = self.image_to_base64(image_path)
-
-            # image = cv2.imread(image_path)
-            # hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
-            # image_height, image_width = image.shape[:2]
-
-            # hsv_ranges = [
-            #     ((0, 50, 50), (10, 255, 255)),
-            #     ((160, 50, 50), (180, 255, 255)),
-            #     ((20, 50, 50), (40, 255, 255)),
-            #     ((0, 0, 0), (180, 255, 80)),
-            #     ((130, 30, 30), (160, 255, 255)),
-            #     ((35, 50, 50), (85, 255, 255)),
-            # ]
-            # masks = [cv2.inRange(hsv, lower, upper) for (lower, upper) in hsv_ranges]
-            # general_color_mask = masks[0]
-            # for m in masks[1:]:
-            #     general_color_mask = cv2.bitwise_or(general_color_mask, m)
-
-            # top_ignore_y = int(image_height * 0.2)
-            # bottom_ignore_y = int(image_height * 0.9)
-            # unit = image_width / 63
-            # x1 = int(unit * 7)        # left engine
-            # x2 = int(unit * (7 + 8))  # left engine
-            # x3 = int(unit * (7 + 8 + 33))      # right engine
-            # x4 = int(unit * (7 + 8 + 33 + 8))  # right engine
-
-            # cv2.rectangle(general_color_mask, (0, 0), (image_width, top_ignore_y), 0, -1)
-            # cv2.rectangle(general_color_mask, (x1, bottom_ignore_y), (x2, image_height), 0, -1)  # left engine
-            # cv2.rectangle(general_color_mask, (x3, bottom_ignore_y), (x4, image_height), 0, -1)  # right engine
-
 
             if self.in_path_mode:
                 if self.current_step >= len(self.path_plan):
