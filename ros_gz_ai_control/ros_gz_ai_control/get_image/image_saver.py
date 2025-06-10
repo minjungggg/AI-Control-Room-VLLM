@@ -81,47 +81,47 @@ class FastImageSaver(Node):
 
             undistorted_image = cv2.remap(cv_image, self.map1, self.map2, interpolation=cv2.INTER_LINEAR)
 
-            # 엔진 부분 마스킹해서 가리기
-            image_height, image_width = undistorted_image.shape[:2]
-            unit = image_width / 63
-            
-            top_ignore_y = int(image_height * 0.2)
-            bottom_ignore_y = int(image_height * 0.9)
-            x1 = int(unit * 7)
-            x2 = int(unit * (7 + 8))
-            x3 = int(unit * (7 + 8 + 33))
-            x4 = int(unit * (7 + 8 + 33 + 8))
-            
-            mask = np.ones((image_height, image_width), dtype=np.uint8) * 255
-            cv2.rectangle(mask, (0, 0), (image_width, top_ignore_y), 0, -1)
-            cv2.rectangle(mask, (x1, bottom_ignore_y), (x2, image_height), 0, -1)  # left engine
-            cv2.rectangle(mask, (x3, bottom_ignore_y), (x4, image_height), 0, -1)  # right engine
-
-            masked_image = cv2.bitwise_and(undistorted_image, undistorted_image, mask=mask)
-
-            
-            # # 드론의 이동 경로 제작
+            # # 엔진 부분 마스킹해서 가리기
             # image_height, image_width = undistorted_image.shape[:2]
             # unit = image_width / 63
             
-            # x1 = int(unit * 7)                             # left engine START
-            # x4 = int(unit * (7 + 8 + 33 + 8))              # right engine END
-            # vanishing_point = (image_width // 2, image_height // 2)  # 화면 중심
+            # top_ignore_y = int(image_height * 0.2)
+            # bottom_ignore_y = int(image_height * 0.9)
+            # x1 = int(unit * 7)
+            # x2 = int(unit * (7 + 8))
+            # x3 = int(unit * (7 + 8 + 33))
+            # x4 = int(unit * (7 + 8 + 33 + 8))
             
-            # triangle = np.array([[
-            #     (x1, image_height),       
-            #     (x4, image_height),      
-            #     vanishing_point       
-            # ]], dtype=np.int32)
+            # mask = np.ones((image_height, image_width), dtype=np.uint8) * 255
+            # cv2.rectangle(mask, (0, 0), (image_width, top_ignore_y), 0, -1)
+            # cv2.rectangle(mask, (x1, bottom_ignore_y), (x2, image_height), 0, -1)  # left engine
+            # cv2.rectangle(mask, (x3, bottom_ignore_y), (x4, image_height), 0, -1)  # right engine
+
+            # masked_image = cv2.bitwise_and(undistorted_image, undistorted_image, mask=mask)
+
             
-            # overlay = undistorted_image.copy()
-            # cv2.fillPoly(overlay, triangle, color=(127, 127, 127))  # BGR 회색
+            # 드론의 이동 경로 제작
+            image_height, image_width = undistorted_image.shape[:2]
+            unit = image_width / 63
             
-            # alpha = 0.3         # 숫자가 작아지면 투명도가 높아짐
-            # blended = cv2.addWeighted(overlay, alpha, undistorted_image, 1 - alpha, 0)
+            x1 = int(unit * 7)                             # left engine START
+            x4 = int(unit * (7 + 8 + 33 + 8))              # right engine END
+            vanishing_point = (image_width // 2, image_height // 2)  # 화면 중심
+            
+            triangle = np.array([[
+                (x1, image_height),       
+                (x4, image_height),      
+                vanishing_point       
+            ]], dtype=np.int32)
+            
+            overlay = undistorted_image.copy()
+            cv2.fillPoly(overlay, triangle, color=(127, 127, 127))  # BGR 회색
+            
+            alpha = 0.3         # 숫자가 작아지면 투명도가 높아짐
+            blended = cv2.addWeighted(overlay, alpha, undistorted_image, 1 - alpha, 0)
             
             filename = os.path.join(self.image_save_path, f"saved_image_{self.image_index}.png")
-            cv2.imwrite(filename, masked_image)
+            cv2.imwrite(filename, blended)
             self.get_logger().info(f"Saved undistorted image with remap: {filename}")
             self.image_index += 1
 
