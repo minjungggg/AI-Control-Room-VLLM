@@ -70,7 +70,7 @@ class GPTDescriptionNode(Node):
                     }
                 ],
                 max_tokens=300,
-                temperature=0.9,
+                temperature=0.5,
             )
 
             description = response.choices[0].message.content.strip()

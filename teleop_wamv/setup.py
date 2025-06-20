@@ -28,6 +28,7 @@ setup(
             'base64_pub = teleop_wamv.base64_pub:main',
             'gpt_bridge = teleop_wamv.gpt_bridge:main',
             'gpt_description = teleop_wamv.gpt_description:main',
+            'gpt_node = teleop_wamv.gpt_node:main',
             'wamv_actuator = teleop_wamv.wamv_actuator:main',
             
         ],

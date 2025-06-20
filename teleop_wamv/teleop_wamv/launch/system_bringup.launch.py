@@ -15,16 +15,22 @@ def generate_launch_description():
             name='base64_pub_node',
             output='screen'
         ),
+        # Node(
+        #     package='teleop_wamv',
+        #     executable='gpt_description',
+        #     name='gpt_description_node',
+        #     output='screen'
+        # ),
+        # Node(
+        #     package='teleop_wamv',
+        #     executable='gpt_bridge',
+        #     name='gpt_bridge_node',
+        #     output='screen'
+        # ),
         Node(
             package='teleop_wamv',
-            executable='gpt_description',
-            name='gpt_description_node',
-            output='screen'
-        ),
-        Node(
-            package='teleop_wamv',
-            executable='gpt_bridge',
-            name='gpt_bridge_node',
+            executable='gpt_node',
+            name='gpt_node_node',
             output='screen'
         ),
         Node(
