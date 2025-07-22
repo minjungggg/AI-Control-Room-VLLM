@@ -112,7 +112,7 @@
 
     <include>
       <pose>0 -10 0 0 0 0</pose>
-      <uri>model://surmark_buoy_white</uri>
+      <uri>model://surmark_buoy_purple</uri>
     </include>
 
   </world>

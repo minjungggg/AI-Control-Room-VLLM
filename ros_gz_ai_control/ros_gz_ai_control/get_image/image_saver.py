@@ -120,8 +120,9 @@ class FastImageSaver(Node):
             # alpha = 0.3         # 숫자가 작아지면 투명도가 높아짐
             # blended = cv2.addWeighted(overlay, alpha, masked_image, 1 - alpha, 0)
             
-            filename = os.path.join(self.image_save_path, f"saved_image_{self.image_index}.png")
+            filename = os.path.join(self.image_save_path, f"saved_undistorted_image_{self.image_index}.png")
             cv2.imwrite(filename, undistorted_image)
+            
             self.get_logger().info(f"Saved undistorted image with remap: {filename}")
             self.image_index += 1
 
