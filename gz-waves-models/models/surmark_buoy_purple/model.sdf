@@ -1,6 +1,6 @@
 <?xml version="1.0" ?>
 <sdf version="1.6">
-    <model name="surmark_buoy_white">  
+    <model name="surmark_buoy_purple">  
         <plugin
             filename="gz-waves-hydrodynamics-system"
             name="gz::sim::systems::Hydrodynamics">
